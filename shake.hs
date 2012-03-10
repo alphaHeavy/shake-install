@@ -22,6 +22,7 @@ import Control.Monad.Reader
 import Data.Monoid
 import Data.Map as Map
 import Development.Shake as Shake
+import Development.Shake.Install.RequestResponse as Shake
 import Data.Generics.Uniplate.DataOnly
 -- import Development.Shake.FilePath
 
@@ -86,55 +87,6 @@ uncaughtExceptionHandler !e = do
 setDefaultUncaughtExceptionHandler :: IO ()
 setDefaultUncaughtExceptionHandler =
   setUncaughtExceptionHandler uncaughtExceptionHandler
-
-data Request a = Request
-  deriving (Show)
-
-instance Typeable1 Request where
-  typeOf1 _ = mkTyConApp (mkTyCon3 "shake" "Main" "Request") []
-
-instance Typeable a => Typeable (Request a) where
-  typeOf = typeOfDefault
- 
-instance NFData (Request a) where
-  rnf _ = ()
-
-instance Eq (Request a) where
-  _ == _ = True 
-
-instance Hashable (Request a) where
-  hash _ = 1
-
-instance Binary (Request a) where
-  get = return Request
-  put _ = return ()
-
-
-
-data Response a = Response{unResponse :: a}
-
-deriving instance Show a => Show (Response a)
-deriving instance Read a => Read (Response a)
-deriving instance Eq a => Eq (Response a)
-deriving instance Ord a => Ord (Response a)
-deriving instance Typeable1 Response
--- deriving instance NFData a => NFData (Response a)
--- deriving instance (Read, Show, Eq, Ord, NFData, Binary, Hashable, Typeable)
-
-instance Hashable a => Hashable (Response a) where
-  hash (Response x) = hash x
-
-instance Binary a => Binary (Response a) where
-  get = fmap Response get
-  put (Response x) = put x
-
-instance NFData a => NFData (Response a) where
-  rnf (Response x) = rnf x `seq` ()
-
-type RuleContext a = (Show a, Binary a, NFData a, Typeable a, Hashable a, Eq a)
-
-instance RuleContext a => Rule (Request a) (Response a) where
-  validStored _ _ = return False
 
 data PersistedEnvironment = PersistedEnvironment
   { penvEnvironment      :: [(String, String)]

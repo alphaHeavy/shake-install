@@ -1,0 +1,48 @@
+Name:                shake-install
+Version:             0.1
+Synopsis:            Build a set of cabal packages in the correct order
+-- Description:         
+Homepage:            https://github.com/alphaHeavy/shake-install
+License:             BSD3
+License-file:        LICENSE
+Author:              Nathan Howell
+Maintainer:          nhowell@alphaheavy.com
+Copyright:           Alpha Heavy Industries
+Category:            Distribution
+Build-type:          Simple
+
+Cabal-version:       >=1.10
+
+Executable shake
+  Default-Language:  Haskell2010
+  Main-is:           shake.hs
+  GHC-Options:       -threaded -with-rtsopts=-qg1 -with-rtsopts=-N
+
+  Build-depends:     base,
+                     binary,
+                     Cabal,
+                     cmdargs,
+                     containers,
+                     deepseq,
+                     directory,
+                     filepath,
+                     hashable,
+                     process,
+                     shake,
+                     uniplate,
+                     unix
+  
+  Other-modules:     Development.Shake.Install.BuildDictionary
+                     Development.Shake.Install.BuildTree
+                     Development.Shake.Install.Cabal
+                     Development.Shake.Install.CabalCustom
+                     Development.Shake.Install.CabalSimple
+                     Development.Shake.Install.Exceptions
+                     Development.Shake.Install.GetBuildType
+                     Development.Shake.Install.PersistedEnvironment
+                     Development.Shake.Install.RequestResponse
+                     Development.Shake.Install.Rules
+                     Development.Shake.Install.ShakeMode
+                     Development.Shake.Install.Utils
+
+  

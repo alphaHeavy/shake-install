@@ -9,7 +9,6 @@
 module Development.Shake.Install.Rules where
 
 import Control.Monad
-import Control.Monad.Reader
 import Data.Map as Map
 import Development.Shake as Shake
 import Development.Shake.Install.RequestResponse as Shake
@@ -18,7 +17,6 @@ import Development.Shake.Install.BuildTree as Shake
 import Development.Shake.Install.Cabal as Shake
 import Development.Shake.Install.CabalCustom as Shake
 import Development.Shake.Install.CabalSimple as Shake
-import Development.Shake.Install.Exceptions as Shake
 import Development.Shake.Install.GetBuildType as Shake
 import Development.Shake.Install.PersistedEnvironment as Shake
 import Development.Shake.Install.ShakeMode as Shake
@@ -36,13 +34,7 @@ import Distribution.Text
 
 import System.Environment (getEnvironment)
 import System.FilePath
-
-import Data.Data
-
-import System.Console.CmdArgs
 import System.Directory as Dir
-
-import GHC.Conc (getNumProcessors)
 
 configureTheEnvironment
   :: (FilePath, FilePath)
@@ -208,4 +200,44 @@ ghcPkgRegister res = "//register" *> action where
         return ()
 
     system' "touch" [filePath]
+
+generatePackageMap :: Request BuildDictionary -> Maybe (Action (Response BuildDictionary))
+generatePackageMap _ = Just action where
+  action = do
+    rootDir <- requestOf penvRootDirectory
+    whatever <- apply1 (BuildChildren rootDir)
+    let packages = [(source, buildFile) | BuildNode{buildFile, buildSources} <- universe whatever, source <- buildSources]
+    pkgList <- forM packages $ \ (cabalFile, buildFile) -> do
+      let cabalFile' = buildFile </> cabalFile
+      gdesc <- getPackageDescription cabalFile'
+      let packageName = pkgName . package . packageDescription $ gdesc
+      return $! (packageName, cabalFile')
+    return . Response . BuildDictionary $ Map.fromList pkgList
+
+buildTree :: BuildTree -> Maybe (Action BuildNode)
+buildTree (BuildChildren dir) = Just action where
+  action = do
+    rootDir <- requestOf penvRootDirectory
+    buildDir <- requestOf penvBuildDirectory
+
+    let shakefile = rootDir </> dir </> "Shakefile.hs"
+
+    need [shakefile]
+    (stdout, _) <- systemOutput "ghc" [shakefile, "-e", "print (children :: [String], sources :: [String])"]
+
+    let (children, sources) = read stdout
+
+    children' <- apply $ fmap (\ x -> BuildChildren $ dir </> x) children
+
+    registrationFiles <- forM sources $ \ pkg -> do
+      gdesc <- getPackageDescription $ dir </> pkg
+      let packageName = display . pkgName . package . packageDescription $ gdesc
+      return $! buildDir </> packageName </> "register"
+
+    return $! BuildNode
+      { buildFile     = rootDir </> dir
+      , buildChildren = children'
+      , buildSources  = sources
+      , buildRegister = registrationFiles
+      }
 

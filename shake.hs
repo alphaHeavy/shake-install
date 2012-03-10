@@ -4,11 +4,8 @@
 
 module Main (main) where
 
-import Control.Monad
 import Data.Generics.Uniplate.DataOnly
-import Data.Map as Map
 import Development.Shake as Shake
-import Development.Shake.Install.BuildDictionary as Shake
 import Development.Shake.Install.BuildTree as Shake
 import Development.Shake.Install.Exceptions as Shake
 import Development.Shake.Install.PersistedEnvironment as Shake
@@ -16,61 +13,9 @@ import Development.Shake.Install.RequestResponse as Shake
 import Development.Shake.Install.Rules as Shake
 import Development.Shake.Install.ShakeMode as Shake
 import Development.Shake.Install.Utils as Shake
-import Distribution.Package
-import Distribution.PackageDescription
-import Distribution.Text
 import GHC.Conc (getNumProcessors)
 import System.Console.CmdArgs
 import System.FilePath
-
-cabalize :: Resource -> Rules ()
-cabalize ghcPkgResource = do
-  initializePackageConf
-  cabalConfigure
-  cabalBuild
-  cabalCopy
-  cabalRegister
-  ghcPkgRegister ghcPkgResource
-
-generatePackageMap :: Request BuildDictionary -> Maybe (Action (Response BuildDictionary))
-generatePackageMap _ = Just action where
-  action = do
-    rootDir <- requestOf penvRootDirectory
-    whatever <- apply1 (BuildChildren rootDir)
-    let packages = [(source, buildFile) | BuildNode{buildFile, buildSources} <- universe whatever, source <- buildSources]
-    pkgList <- forM packages $ \ (cabalFile, buildFile) -> do
-      let cabalFile' = buildFile </> cabalFile
-      gdesc <- getPackageDescription cabalFile'
-      let packageName = pkgName . package . packageDescription $ gdesc
-      return $! (packageName, cabalFile')
-    return . Response . BuildDictionary $ Map.fromList pkgList
-
-buildTree :: BuildTree -> Maybe (Action BuildNode)
-buildTree (BuildChildren dir) = Just action where
-  action = do
-    rootDir <- requestOf penvRootDirectory
-    buildDir <- requestOf penvBuildDirectory
-
-    let shakefile = rootDir </> dir </> "Shakefile.hs"
-
-    need [shakefile]
-    (stdout, _) <- systemOutput "ghc" [shakefile, "-e", "print (children :: [String], sources :: [String])"]
-
-    let (children, sources) = read stdout
-
-    children' <- apply $ fmap (\ x -> BuildChildren $ dir </> x) children
-
-    registrationFiles <- forM sources $ \ pkg -> do
-      gdesc <- getPackageDescription $ dir </> pkg
-      let packageName = display . pkgName . package . packageDescription $ gdesc
-      return $! buildDir </> packageName </> "register"
-
-    return $! BuildNode
-      { buildFile     = rootDir </> dir
-      , buildChildren = children'
-      , buildSources  = sources
-      , buildRegister = registrationFiles
-      }
 
 -- |
 -- Each build type has a set of targets they want built
@@ -109,7 +54,12 @@ main = do
     rule (configureTheEnvironment dirs sm)
     rule buildTree
     rule generatePackageMap
-    cabalize ghcPkgResource
+    initializePackageConf
+    cabalConfigure
+    cabalBuild
+    cabalCopy
+    cabalRegister
+    ghcPkgRegister ghcPkgResource
 
     action $ do
       -- make sure this is not needed directly by any packages

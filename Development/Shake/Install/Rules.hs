@@ -6,7 +6,17 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
-module Development.Shake.Install.Rules where
+module Development.Shake.Install.Rules
+  ( configureTheEnvironment
+  , initializePackageConf
+  , cabalConfigure
+  , cabalBuild
+  , cabalCopy
+  , cabalRegister
+  , ghcPkgRegister
+  , buildTree
+  , generatePackageMap
+  ) where
 
 import Control.Monad
 import Data.Map as Map
@@ -57,7 +67,11 @@ configureTheEnvironment (rootDir, _) sm _ = Just action where
 
     return $! Response penv
 
-initializePackageConf :: Rules ()
+-- | Create or reinitialize the packge.conf.d, should be performed as top level
+-- step that no other rules depend on. Since the package.cache file is continually
+-- updated, a dependency causes the whole tree to be rebuilt
+initializePackageConf
+  :: Rules ()
 initializePackageConf = "//package.conf.d/package.cache" *> action where
   action filePath = do
     let pkgConfDirectory = takeDirectory filePath
@@ -85,7 +99,54 @@ getPackageDescription filePath = do
   traced "readPackageDescription" $
     readPackageDescription normal filePath
 
-cabalConfigure :: Rules ()
+-- |
+-- Dispatching function that selects between in-process
+-- and cabal-install invocations to perform each build step
+runCabalAction
+  :: GetBuildType arg
+  => FilePath
+  -> arg
+  -> (forall a . Cabal a => a -> FilePath -> arg -> Action r)
+  -> Action r
+runCabalAction filePath lbi fun =
+  case getBuildType lbi of
+    Just Simple -> fun CabalSimple filePath lbi
+    _           -> fun CabalCustom filePath lbi
+
+-- |
+-- Parse a LocalBuildInfo for a configured package
+getLocalBuildInfo
+  :: FilePath
+  -> Action LocalBuildInfo
+getLocalBuildInfo filePath = do
+    need [replaceFileName filePath "setup-config"]
+
+    traced "getPersistBuildConfig" $
+      getPersistBuildConfig (takeDirectory filePath)
+
+-- |
+-- Module paths don't come with an extension. This should
+-- really be done as a batch operation rather than probing
+-- each extension supported by cabal-install
+tryNeedExtensions
+  :: FilePath
+  -> FilePath
+  -> Action ()
+tryNeedExtensions filePath modulePath = do
+  sourceDir <- findSourceDirectory filePath
+
+  let exts = [".hs", ".lhs", ".chs", ".hsc", ".x", ".y", ".ly", ".cpphs"]
+  forM_ exts $ \ ext -> do
+    let filePlusExt = sourceDir </> addExtension modulePath ext
+    exists <- liftIO $ Dir.doesFileExist filePlusExt
+    when exists $
+      need [filePlusExt] 
+
+
+-- |
+-- The main build rule, should be equivalent to "cabal configure"
+cabalConfigure
+  :: Rules ()
 cabalConfigure = "//setup-config" *> action where
   action filePath = do
     sourceDir <- findSourceDirectory filePath
@@ -115,36 +176,10 @@ cabalConfigure = "//setup-config" *> action where
 
     runCabalAction filePath gdesc configAction
 
-runCabalAction
-  :: GetBuildType arg
-  => FilePath
-  -> arg
-  -> (forall a . Cabal a => a -> FilePath -> arg -> Action r)
-  -> Action r
-runCabalAction filePath lbi fun =
-  case getBuildType lbi of
-    Just Simple -> fun CabalSimple filePath lbi
-    _           -> fun CabalCustom filePath lbi
-
-getLocalBuildInfo :: FilePath -> Action LocalBuildInfo
-getLocalBuildInfo filePath = do
-    need [replaceFileName filePath "setup-config"]
-
-    traced "getPersistBuildConfig" $
-      getPersistBuildConfig (takeDirectory filePath)
-
-tryNeedExtensions :: FilePath -> FilePath -> Action ()
-tryNeedExtensions filePath modulePath = do
-  sourceDir <- findSourceDirectory filePath
-
-  let exts = [".hs", ".lhs", ".chs", ".hsc", ".x", ".y", ".ly", ".cpphs"]
-  forM_ exts $ \ ext -> do
-    let filePlusExt = sourceDir </> addExtension modulePath ext
-    exists <- liftIO $ Dir.doesFileExist filePlusExt
-    when exists $
-      need [filePlusExt] 
-
-cabalBuild :: Rules ()
+-- |
+-- The main build rule, should be equivalent to "cabal build"
+cabalBuild
+  :: Rules ()
 cabalBuild = "//package.conf.inplace" *> action where
   action filePath = do
     lbi <- getLocalBuildInfo filePath
@@ -159,7 +194,13 @@ cabalBuild = "//package.conf.inplace" *> action where
 
     runCabalAction filePath lbi buildAction
 
-cabalCopy :: Rules ()
+-- |
+-- The main copy rule, should be equivalent to "cabal copy"
+--
+-- The target is a dummy file named 'copy' so we don't need to
+-- calculate the actual files copied
+cabalCopy
+  :: Rules ()
 cabalCopy = "//copy" *> action where
   action filePath = do
     need [replaceFileName filePath "package.conf.inplace"]
@@ -168,7 +209,12 @@ cabalCopy = "//copy" *> action where
 
     runCabalAction filePath lbi copyAction
 
-cabalRegister :: Rules ()
+-- |
+-- The main register script rule, should be equivalent to "cabal register"
+--
+-- This generates a registration script used by ghc-pkg register
+cabalRegister
+  :: Rules ()
 cabalRegister = "//pkg.config" *> action where
   action filePath = do
     need [replaceFileName filePath "copy"]
@@ -179,10 +225,20 @@ cabalRegister = "//pkg.config" *> action where
       Just _ ->
         runCabalAction filePath lbi registerAction
 
-      Nothing ->
+      Nothing -> do
+        -- executables are not registered but it's convenient to pretend they are
+        let name = display . pkgName . package . localPkgDescr $ lbi
+        putLoud $ "Skipping registration script generation for executable package: " ++ name
         system' "touch" [filePath]
 
-ghcPkgRegister :: Resource -> Rules ()
+-- |
+-- The main package register rule, should be equivalent to "ghc-pkg register"
+--
+-- "update" is used instead of "register" so incremental builds don't error out
+-- when the package is added to the package.conf.d and cache
+ghcPkgRegister
+  :: Resource -- ^ singleton resource lock, "ghc-pkg register" must be serialized
+  -> Rules ()
 ghcPkgRegister res = "//register" *> action where
   action filePath = do
     let pkgConf = replaceFileName filePath "pkg.config"
@@ -196,12 +252,18 @@ ghcPkgRegister res = "//register" *> action where
         withResource res 1 $
           system' "ghc-pkg" ["update", "-v0", "--global", "--user", "--package-conf="++pkgConfDir, pkgConf]
 
-      Nothing ->
-        return ()
+      Nothing -> do
+        -- executables are not registered but it's convenient to pretend they are
+        let name = display . pkgName . package . localPkgDescr $ lbi
+        putLoud $ "Skipping registration for executable package: " ++ name
 
     system' "touch" [filePath]
 
-generatePackageMap :: Request BuildDictionary -> Maybe (Action (Response BuildDictionary))
+-- |
+-- Generate a lookup dictionary used to map a PackageName to its location in the build tree
+generatePackageMap
+  :: Request BuildDictionary
+  -> Maybe (Action (Response BuildDictionary))
 generatePackageMap _ = Just action where
   action = do
     rootDir <- requestOf penvRootDirectory
@@ -212,9 +274,13 @@ generatePackageMap _ = Just action where
       gdesc <- getPackageDescription cabalFile'
       let packageName = pkgName . package . packageDescription $ gdesc
       return $! (packageName, cabalFile')
+
     return . Response . BuildDictionary $ Map.fromList pkgList
 
-buildTree :: BuildTree -> Maybe (Action BuildNode)
+-- | Walk the build tree looking for cabal packages to build
+buildTree
+  :: BuildTree
+  -> Maybe (Action BuildNode)
 buildTree (BuildChildren dir) = Just action where
   action = do
     rootDir <- requestOf penvRootDirectory

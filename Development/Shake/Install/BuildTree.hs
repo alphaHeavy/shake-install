@@ -6,7 +6,10 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
-module Development.Shake.Install.BuildTree where
+module Development.Shake.Install.BuildTree
+  ( BuildTree(..)
+  , BuildNode(..)
+  ) where
 
 import Control.DeepSeq
 import Data.Binary

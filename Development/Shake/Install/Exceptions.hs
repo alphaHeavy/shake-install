@@ -1,7 +1,9 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 
-module Development.Shake.Install.Exceptions where
+module Development.Shake.Install.Exceptions
+  ( setDefaultUncaughtExceptionHandler
+  ) where
 
 import Control.Exception (Exception(..), SomeException(..))
 import Data.IORef (IORef, newIORef, writeIORef)
@@ -20,19 +22,23 @@ instance Show NoException where
 instance Exception NoException
 
 -- | storage for the last exception
-lastException :: IORef SomeException
+lastException
+  :: IORef SomeException
 {-# NOINLINE lastException #-}
 lastException = unsafePerformIO . newIORef $ SomeException NoException
 
 -- | when no catch frame handles an exception dump core and terminate the process
-uncaughtExceptionHandler :: SomeException -> IO ()
+uncaughtExceptionHandler
+  :: SomeException
+  -> IO ()
 {-# NOINLINE uncaughtExceptionHandler #-}
 uncaughtExceptionHandler !e = do
   writeIORef lastException e
   hPutStrLn stderr $ "Unhandled exception: " ++ show e
   raiseSignal sigABRT
 
-setDefaultUncaughtExceptionHandler :: IO ()
+setDefaultUncaughtExceptionHandler
+  :: IO ()
 setDefaultUncaughtExceptionHandler =
   setUncaughtExceptionHandler uncaughtExceptionHandler
 

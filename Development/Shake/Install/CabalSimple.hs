@@ -1,6 +1,8 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
-module Development.Shake.Install.CabalSimple where
+module Development.Shake.Install.CabalSimple
+  ( CabalSimple(..)
+  ) where
 
 import Data.Monoid
 import Development.Shake as Shake

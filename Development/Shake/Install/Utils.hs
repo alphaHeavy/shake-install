@@ -13,7 +13,11 @@ import System.Exit
 import System.FilePath
 import System.Process
 
-systemWithDirectory :: String -> String -> [String] -> Action ()
+systemWithDirectory
+  :: String
+  -> String
+  -> [String]
+  -> Action ()
 systemWithDirectory command cwd args = do
   env <- requestOf penvEnvironment
 
@@ -62,7 +66,8 @@ makePackageDescriptionPathsAbsolute sourceDirectory desc@PackageDescription{..} 
     | Prelude.null fileName = fileName
     | otherwise             = combine sourceDirectory fileName
 
-findDirectoryBounds :: IO (FilePath, FilePath)
+findDirectoryBounds
+  :: IO (FilePath, FilePath)
 findDirectoryBounds = step1 =<< getCurrentDirectory where
   step1 dir = do
     exists <- doesFileExist (dir </> "Shakefile.hs")

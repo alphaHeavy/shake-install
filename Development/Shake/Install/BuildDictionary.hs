@@ -4,7 +4,11 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Development.Shake.Install.BuildDictionary where
+module Development.Shake.Install.BuildDictionary
+  ( BuildDictionary(..)
+  , findCabalFile
+  , findSourceDirectory
+  ) where
 
 import Control.DeepSeq
 import Data.Binary
@@ -40,7 +44,9 @@ newtype BuildDictionary = BuildDictionary{unBuildDict :: Map PackageName FilePat
 
 deriving instance Typeable PackageName
 
-findCabalFile :: FilePath -> Action FilePath
+findCabalFile
+  :: FilePath
+  -> Action FilePath
 findCabalFile filePath = do
   dict <- requestOf unBuildDict
   let packageName = takeBaseName $ takeDirectory filePath
@@ -48,7 +54,9 @@ findCabalFile filePath = do
     Just x -> return x
     Nothing -> fail $ "Could not find source mapping for: " ++ filePath
 
-findSourceDirectory :: FilePath -> Action FilePath
+findSourceDirectory
+  :: FilePath
+  -> Action FilePath
 findSourceDirectory filePath =
   fmap takeDirectory $ findCabalFile filePath
 

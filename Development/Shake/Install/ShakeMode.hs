@@ -23,7 +23,8 @@ data ShakeMode
       }
     deriving (Show, Data, Typeable)
 
-shakeMode :: ShakeMode
+shakeMode
+  :: ShakeMode
 shakeMode = modes
   [ ShakeClean
      { desiredVerbosity = Shake.Normal &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"

@@ -1,4 +1,6 @@
-module Development.Shake.Install.CabalCustom where
+module Development.Shake.Install.CabalCustom
+  ( CabalCustom(..)
+  ) where
 
 import Development.Shake
 import Development.Shake.Install.BuildDictionary as Shake

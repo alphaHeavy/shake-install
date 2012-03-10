@@ -24,6 +24,7 @@ import Data.Map as Map
 import Development.Shake as Shake
 import Development.Shake.Install.RequestResponse as Shake
 import Development.Shake.Install.Exceptions as Shake
+import Development.Shake.Install.PersistedEnvironment as Shake
 import Data.Generics.Uniplate.DataOnly
 -- import Development.Shake.FilePath
 
@@ -57,42 +58,6 @@ import System.Exit
 import System.Process
 
 import GHC.Conc (getNumProcessors)
-
-data PersistedEnvironment = PersistedEnvironment
-  { penvEnvironment      :: [(String, String)]
-  , penvRootDirectory    :: FilePath
-  , penvBuildDirectory   :: FilePath
-  , penvPrefixDirectory  :: FilePath
-  , penvPkgConfDirectory :: FilePath
-  } deriving (Show, Eq, Ord, Typeable)
-
-instance Binary PersistedEnvironment where
-  put PersistedEnvironment{..} = do
-    put penvEnvironment
-    put penvRootDirectory
-    put penvBuildDirectory
-    put penvPrefixDirectory
-    put penvPkgConfDirectory
-
-  get =
-    liftM5 PersistedEnvironment get get get get get
-
-instance Hashable PersistedEnvironment where
-  hash PersistedEnvironment{..} = hash
-    ( penvEnvironment
-    , penvRootDirectory
-    , penvBuildDirectory
-    , penvPrefixDirectory
-    , penvPkgConfDirectory)
-
-instance NFData PersistedEnvironment where
-  rnf PersistedEnvironment{..} =
-    rnf penvEnvironment `seq`
-    rnf penvRootDirectory `seq`
-    rnf penvBuildDirectory `seq`
-    rnf penvPrefixDirectory `seq`
-    rnf penvPkgConfDirectory `seq`
-    ()
 
 configureTheEnvironment
   :: (FilePath, FilePath)

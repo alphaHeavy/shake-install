@@ -1,5 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
 module Development.Shake.Install.RequestResponse where
@@ -56,4 +58,11 @@ instance NFData a => NFData (Response a) where
 instance (Show a, Binary a, NFData a, Typeable a, Hashable a, Eq a)
   => Rule (Request a) (Response a) where
   validStored _ _ = return False
+
+requestOf
+  :: forall a b . Rule (Request a) (Response a)
+  => (a -> b) -- ^ record field selector
+  -> Action b
+requestOf fun = do
+  fmap (fun . unResponse) $ apply1 (Request :: Request a)
 

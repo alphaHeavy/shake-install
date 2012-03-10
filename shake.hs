@@ -100,13 +100,6 @@ initializePackageConf = "//package.conf.d/package.cache" *> action where
       system' "ghc-pkg" ["init", pkgConfDirectory]
 
 
-requestOf
-  :: forall a b . Rule (Request a) (Response a)
-  => (a -> b) -- ^ record field selector
-  -> Action b
-requestOf fun = do
-  fmap (fun . unResponse) $ apply1 (Request :: Request a)
-
 systemWithDirectory :: String -> String -> [String] -> Action ()
 systemWithDirectory command cwd args = do
   env <- requestOf penvEnvironment

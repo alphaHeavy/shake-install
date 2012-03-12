@@ -41,6 +41,7 @@ import Distribution.Simple.Configure
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Verbosity
 import Distribution.Text
+import Language.Haskell.Extension
 
 import System.Environment (getEnvironment)
 import System.FilePath
@@ -99,19 +100,31 @@ getPackageDescription filePath = do
   traced "readPackageDescription" $
     readPackageDescription normal filePath
 
+noTemplateHaskell
+  :: GetBuildType arg
+  => arg
+  -> Bool
+noTemplateHaskell = not . any (== EnableExtension TemplateHaskell) . exts where
+  exts = concat . fmap allExtensions . getBuildInfo
+
 -- |
 -- Dispatching function that selects between in-process
 -- and cabal-install invocations to perform each build step
 runCabalAction
-  :: GetBuildType arg
+  :: (Show arg, GetBuildType arg)
   => FilePath
   -> arg
   -> (forall a . Cabal a => a -> FilePath -> arg -> Action r)
   -> Action r
 runCabalAction filePath lbi fun =
   case getBuildType lbi of
-    Just Simple -> fun CabalSimple filePath lbi
-    _           -> fun CabalCustom filePath lbi
+    -- template haskell that loads files from disk do not have the
+    -- correct cwd set so relative loads fail
+    Just Simple | noTemplateHaskell lbi -> do
+      fun CabalSimple filePath lbi
+
+    _ ->
+      fun CabalCustom filePath lbi
 
 -- |
 -- Parse a LocalBuildInfo for a configured package
@@ -140,7 +153,7 @@ tryNeedExtensions filePath modulePath = do
     let filePlusExt = sourceDir </> addExtension modulePath ext
     exists <- liftIO $ Dir.doesFileExist filePlusExt
     when exists $
-      need [filePlusExt] 
+      need [filePlusExt]
 
 
 -- |
@@ -222,10 +235,10 @@ cabalRegister = "//pkg.config" *> action where
     lbi <- getLocalBuildInfo filePath
 
     case library . localPkgDescr $ lbi of
-      Just _ ->
+      Just Library{libBuildInfo = BuildInfo{buildable = True}} ->
         runCabalAction filePath lbi registerAction
 
-      Nothing -> do
+      _ -> do
         -- executables are not registered but it's convenient to pretend they are
         let name = display . pkgName . package . localPkgDescr $ lbi
         putLoud $ "Skipping registration script generation for executable package: " ++ name
@@ -248,11 +261,11 @@ ghcPkgRegister res = "//register" *> action where
     pkgConfDir <- requestOf penvPkgConfDirectory
 
     case library . localPkgDescr $ lbi of
-      Just _ ->
+      Just Library{libBuildInfo = BuildInfo{buildable = True}} ->
         withResource res 1 $
           system' "ghc-pkg" ["update", "-v0", "--global", "--user", "--package-conf="++pkgConfDir, pkgConf]
 
-      Nothing -> do
+      _ -> do
         -- executables are not registered but it's convenient to pretend they are
         let name = display . pkgName . package . localPkgDescr $ lbi
         putLoud $ "Skipping registration for executable package: " ++ name

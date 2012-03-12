@@ -23,6 +23,8 @@ data ShakeMode
       , desiredThreads   :: Maybe Int
       , desiredStaunch   :: Bool
       , desiredRecurse   :: Bool
+      , desiredRoots     :: [String]
+      , desiredPackages  :: [String]
       }
   | ShakeInstall
       { desiredVerbosity :: Shake.Verbosity
@@ -50,6 +52,8 @@ shakeMode = modes
      , desiredThreads   = Nothing &= name "j" &= name "jobs" &= explicit &= help "Number of parallel jobs"
      , desiredStaunch   = False &= name "k" &= name "keep-going" &= explicit &= help "Continue as much as possible after an error"
      , desiredRecurse   = False &= name "r" &= name "recursive" &= explicit &= help "Recurse into directories looking for *.cabal files"
+     , desiredRoots     = [] &= name "root" &= typDir &= explicit &= help "Additional dependency roots"
+     , desiredPackages  = [] &= args &= typFile
      } &= name "build" &= auto
   , ShakeInstall
      { desiredVerbosity = Shake.Normal &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
@@ -57,4 +61,17 @@ shakeMode = modes
      , desiredStaunch   = False &= name "k" &= name "keep-going" &= explicit &= help "Continue as much as possible after an error"
      } &= name "install"
   ] &= program "shake"
+
+
+data BuildStyle
+  = BuildViaShakefile
+      {
+      }
+  | BuildRecursiveWildcard
+      {
+      }
+  | BuildWithExplicitPaths
+      { buildCabalFiles :: [FilePath]
+      , buildDepends    :: [FilePath]
+      }
 

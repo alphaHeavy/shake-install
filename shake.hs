@@ -1,4 +1,5 @@
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
@@ -34,6 +35,32 @@ applyBuildActions ShakeBuild{} (_, currentDir) = do
 applyBuildActions ShakeInstall{} _ = do
   return ()
 
+classifyBuildStyle
+  :: ShakeMode
+  -> BuildStyle
+classifyBuildStyle sm = case sm of
+  ShakeBuild{desiredRecurse = True} ->
+    BuildRecursiveWildcard
+      {
+      }
+
+  sb@ShakeBuild{desiredPackages, desiredRoots} | explicitPaths sb ->
+    BuildWithExplicitPaths
+      { buildCabalFiles = desiredPackages
+      , buildDepends    = desiredRoots
+      }
+
+  _ ->
+    BuildViaShakefile
+      {
+      }
+
+ where
+  explicitPaths ShakeBuild{desiredPackages, desiredRoots}
+    | not . null $ desiredPackages = True
+    | not . null $ desiredRoots    = True
+  explicitPaths _                  = False
+
 main :: IO ()
 main = do
   setDefaultUncaughtExceptionHandler
@@ -57,13 +84,11 @@ main = do
        , shakeVerbosity = desiredVerbosity sm
        , shakeStaunch   = desiredStaunch sm }
 
-      mode = case sm of
-        ShakeBuild{desiredRecurse = True} -> True
-        _                                 -> False
+      style = classifyBuildStyle sm
 
   shake options $ do
     rule (configureTheEnvironment dirs sm)
-    rule (buildTree mode)
+    rule (buildTree style)
     rule generatePackageMap
     initializePackageConf
     cabalConfigure

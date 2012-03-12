@@ -304,10 +304,10 @@ getPackageRegistrationFiles buildDir dir =
 
 -- | Recurse the build tree looking for cabal packages to build
 buildTree
-  :: Bool
+  :: BuildStyle
   -> BuildTree
   -> Maybe (Action BuildNode)
-buildTree True (BuildChildren dir) = Just action where
+buildTree BuildRecursiveWildcard{} (BuildChildren dir) = Just action where
   action = do
     rootDir <- requestOf penvRootDirectory
     buildDir <- requestOf penvBuildDirectory
@@ -343,13 +343,36 @@ buildTree True (BuildChildren dir) = Just action where
 
               processStream buildNode' dirStream
 
+    -- no lifted bracket for Action, hope for the best
     dirStream <- liftIO $ openDirStream (rootDir </> dir)
     buildNode <- processStream emptyNode dirStream
     liftIO $ closeDirStream dirStream
+
     return buildNode
 
+buildTree BuildWithExplicitPaths{..} bc@(BuildChildren dir) = Just action where
+  action = do
+    rootDir <- requestOf penvRootDirectory
+    buildDir <- requestOf penvBuildDirectory
+    currentDir <- liftIO getCurrentDirectory
+
+    -- only depend on other root directories once
+    children' <- if rootDir /= rootDir </> dir
+      then apply $ filter (/= bc) $ fmap (\ x -> BuildChildren (currentDir </> x)) buildDepends
+      else return []
+
+    registrationFiles <- getPackageRegistrationFiles buildDir currentDir buildCabalFiles
+
+    return $! BuildNode
+      { buildFile     = rootDir </> dir
+      , buildChildren = children'
+      , buildSources  = buildCabalFiles
+      , buildRegister = registrationFiles
+      }
+
+
 -- | Walk the tree evaluating Shakefile.hs to discover .cabal files to build
-buildTree False (BuildChildren dir) = Just action where
+buildTree BuildViaShakefile{} (BuildChildren dir) = Just action where
   action = do
     rootDir <- requestOf penvRootDirectory
     buildDir <- requestOf penvBuildDirectory

@@ -70,13 +70,22 @@ findDirectoryBounds
   :: IO (FilePath, FilePath)
 findDirectoryBounds = step1 =<< getCurrentDirectory where
   step1 dir = do
-    exists <- doesFileExist (dir </> "Shakefile.hs")
+    fileFound <- doesFileExist (dir </> "Shakefile.hs")
+    dbFound <- doesFileExist (dir </> ".shake.database")
 
     let parentDir = takeDirectory dir
-    case exists of
-      True                     -> step2 (dir, dir) parentDir 
-      False | dir /= parentDir -> step1 parentDir
-      _ -> fail "No Shakefile.hs found in any parent directories"
+    case (fileFound, dbFound) of
+      (_, True)                     -> return (dir, dir)
+      (True, _)                     -> step2 (dir, dir) parentDir 
+      (False, _) | dir /= parentDir -> step1 parentDir
+
+      -- No Shakefile.hs found in any parent directories, assume
+      -- the .cabal files are specified on the command line
+      -- or that we're going to recurse the source tree
+      -- searching for them
+      _ -> do
+        cwd <- getCurrentDirectory
+        return (cwd, cwd)
 
   step2 best@(_, top) dir = do
     fileFound <- doesFileExist (dir </> "Shakefile.hs")

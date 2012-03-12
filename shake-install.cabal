@@ -16,7 +16,7 @@ Cabal-version:       >=1.10
 Executable shake
   Default-Language:  Haskell2010
   Main-is:           shake.hs
-  GHC-Options:       -Wall -threaded -rtsopts "-with-rtsopts=-qg1 -A2m -N"
+  GHC-Options:       -Wall -threaded -rtsopts "-with-rtsopts=-qg1 -N"
 
   Build-depends:     base         >= 4.4 && < 5,
                      binary       == 0.5.*,

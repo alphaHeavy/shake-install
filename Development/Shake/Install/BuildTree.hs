@@ -18,22 +18,18 @@ import Data.Hashable
 import Development.Shake as Shake
 
 data BuildTree
-  = BuildAll
-  | BuildChildren String
+  = BuildChildren String
     deriving (Read, Show, Eq, Typeable)
 
 instance Hashable BuildTree where
-  hash BuildAll = hash (1 :: Int)
   hash (BuildChildren str) = hash (2 :: Int, str)
 
 instance NFData BuildTree where
-  rnf BuildAll = ()
   rnf (BuildChildren x1) = ((rnf x1) `seq` ())
 
 instance Binary BuildTree where
   put x
     = case x of
-        BuildAll -> putWord8 0
         BuildChildren x1 -> do
           putWord8 1
           put x1
@@ -41,7 +37,6 @@ instance Binary BuildTree where
   get = do
     i <- getWord8;
     case i of
-      0 -> return BuildAll
       1 -> fmap BuildChildren get
       _ -> error "Corrupted binary data for BuildTree"
 

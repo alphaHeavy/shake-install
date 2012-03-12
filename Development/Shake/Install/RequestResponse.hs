@@ -63,6 +63,6 @@ requestOf
   :: forall a b . Rule (Request a) (Response a)
   => (a -> b) -- ^ record field selector
   -> Action b
-requestOf fun = do
+requestOf fun =
   fmap (fun . unResponse) $ apply1 (Request :: Request a)
 

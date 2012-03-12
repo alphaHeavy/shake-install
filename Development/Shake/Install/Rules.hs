@@ -89,7 +89,7 @@ initializePackageConf = "//package.conf.d/package.cache" *> action where
 
           return True
 
-    when needsInit $ do
+    when needsInit $
       system' "ghc-pkg" ["init", pkgConfDirectory]
 
 getPackageDescription
@@ -121,7 +121,7 @@ runCabalAction filePath lbi fun =
   case getBuildType lbi of
     -- template haskell that loads files from disk do not have the
     -- correct cwd set so relative loads fail
-    Just Simple | noTemplateHaskell lbi -> do
+    Just Simple | noTemplateHaskell lbi ->
       fun CabalSimple filePath lbi
 
     _ ->

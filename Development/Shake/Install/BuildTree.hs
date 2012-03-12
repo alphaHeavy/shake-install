@@ -25,7 +25,7 @@ instance Hashable BuildTree where
   hash (BuildChildren str) = hash (2 :: Int, str)
 
 instance NFData BuildTree where
-  rnf (BuildChildren x1) = ((rnf x1) `seq` ())
+  rnf (BuildChildren x1) = rnf x1 `seq` ()
 
 instance Binary BuildTree where
   put x
@@ -52,8 +52,7 @@ instance Hashable BuildNode where
 
 instance NFData BuildNode where
   rnf (BuildNode x1 x2 x3 x4)
-    = ((rnf x1)
-       `seq` ((rnf x2) `seq` ((rnf x3) `seq` ((rnf x4) `seq` ()))))
+    = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
 
 instance Binary BuildNode where
   put (BuildNode x1 x2 x3 x4)

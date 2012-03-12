@@ -24,10 +24,10 @@ import Development.Shake.Install.RequestResponse (requestOf)
 
 instance NFData PackageIdentifier where
   rnf (PackageIdentifier x1 x2)
-    = ((rnf x1) `seq` ((rnf x2) `seq` ()))
+    = rnf x1 `seq` rnf x2 `seq` ()
 
 instance NFData PackageName where
-  rnf (PackageName x1) = ((rnf x1) `seq` ())
+  rnf (PackageName x1) = rnf x1 `seq` ()
 
 instance Hashable (Map PackageName FilePath) where
   hash = hash . toList

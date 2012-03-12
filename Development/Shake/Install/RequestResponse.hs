@@ -57,7 +57,7 @@ instance NFData a => NFData (Response a) where
 
 instance (Show a, Binary a, NFData a, Typeable a, Hashable a, Eq a)
   => Rule (Request a) (Response a) where
-  validStored _ _ = return False
+  validStored _ _ = return True
 
 requestOf
   :: forall a b . Rule (Request a) (Response a)

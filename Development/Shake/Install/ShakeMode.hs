@@ -9,17 +9,25 @@ import System.Console.CmdArgs
 data ShakeMode
   = ShakeClean
       { desiredVerbosity :: Shake.Verbosity
+      , desiredThreads   :: Maybe Int
+      , desiredStaunch   :: Bool
       }
   | ShakeConfigure
       { desiredVerbosity :: Shake.Verbosity
       , desiredPrefix    :: FilePath
+      , desiredThreads   :: Maybe Int
+      , desiredStaunch   :: Bool
       }
   | ShakeBuild
       { desiredVerbosity :: Shake.Verbosity
       , desiredThreads   :: Maybe Int
+      , desiredStaunch   :: Bool
+      , desiredRecurse   :: Bool
       }
   | ShakeInstall
       { desiredVerbosity :: Shake.Verbosity
+      , desiredThreads   :: Maybe Int
+      , desiredStaunch   :: Bool
       }
     deriving (Show, Data, Typeable)
 
@@ -28,17 +36,25 @@ shakeMode
 shakeMode = modes
   [ ShakeClean
      { desiredVerbosity = Shake.Normal &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
+     , desiredThreads   = Nothing &= name "j" &= name "jobs" &= explicit &= help "Number of parallel jobs"
+     , desiredStaunch   = False &= name "k" &= name "keep-going" &= explicit &= help "Continue as much as possible after an error"
      } &= name "clean"
   , ShakeConfigure
      { desiredVerbosity = Shake.Normal &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
      , desiredPrefix    = "dist" </> "build" &= name "prefix" &= explicit &= help "Installation prefix"
+     , desiredThreads   = Nothing &= name "j" &= name "jobs" &= explicit &= help "Number of parallel jobs"
+     , desiredStaunch   = False &= name "k" &= name "keep-going" &= explicit &= help "Continue as much as possible after an error"
      } &= name "configure"
   , ShakeBuild
      { desiredVerbosity = Shake.Normal &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
      , desiredThreads   = Nothing &= name "j" &= name "jobs" &= explicit &= help "Number of parallel jobs"
+     , desiredStaunch   = False &= name "k" &= name "keep-going" &= explicit &= help "Continue as much as possible after an error"
+     , desiredRecurse   = False &= name "r" &= name "recursive" &= explicit &= help "Recurse into directories looking for *.cabal files"
      } &= name "build" &= auto
   , ShakeInstall
      { desiredVerbosity = Shake.Normal &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
+     , desiredThreads   = Nothing &= name "j" &= name "jobs" &= explicit &= help "Number of parallel jobs"
+     , desiredStaunch   = False &= name "k" &= name "keep-going" &= explicit &= help "Continue as much as possible after an error"
      } &= name "install"
   ] &= program "shake"
 

@@ -19,7 +19,7 @@ module Development.Shake.Install.Rules
   ) where
 
 import Control.Monad
-import Data.Map as Map
+import qualified Data.Map as Map
 import Development.Shake as Shake
 import Development.Shake.Install.RequestResponse as Shake
 import Development.Shake.Install.BuildDictionary as Shake
@@ -46,6 +46,7 @@ import Language.Haskell.Extension
 import System.Environment (getEnvironment)
 import System.FilePath
 import System.Directory as Dir
+import System.Posix.Directory
 
 configureTheEnvironment
   :: (FilePath, FilePath)
@@ -290,11 +291,65 @@ generatePackageMap _ = Just action where
 
     return . Response . BuildDictionary $ Map.fromList pkgList
 
--- | Walk the build tree looking for cabal packages to build
+getPackageRegistrationFiles
+  :: FilePath
+  -> FilePath
+  -> [FilePath]
+  -> Action [FilePath]
+getPackageRegistrationFiles buildDir dir =
+  mapM $ \ pkg -> do
+    gdesc <- getPackageDescription $ dir </> pkg
+    let packageName = display . pkgName . package . packageDescription $ gdesc
+    return $! buildDir </> packageName </> "register"
+
+-- | Recurse the build tree looking for cabal packages to build
 buildTree
-  :: BuildTree
+  :: Bool
+  -> BuildTree
   -> Maybe (Action BuildNode)
-buildTree (BuildChildren dir) = Just action where
+buildTree True (BuildChildren dir) = Just action where
+  action = do
+    rootDir <- requestOf penvRootDirectory
+    buildDir <- requestOf penvBuildDirectory
+
+    let emptyNode = BuildNode
+          { buildFile     = rootDir </> dir
+          , buildChildren = []
+          , buildSources  = []
+          , buildRegister = []
+          }
+
+        processStream :: BuildNode -> DirStream -> Action BuildNode
+        processStream buildNode dirStream = do
+          entry <- liftIO $ readDirStream dirStream
+          if null entry
+            then return buildNode
+            else do
+              isDir <- liftIO $ doesDirectoryExist entry
+              buildNode' <- if isDir && entry /= "." && entry /= ".."
+                then do
+                  child <- apply1 $ BuildChildren (dir </> entry)
+                  return buildNode{buildChildren = child:buildChildren buildNode}
+                else if takeExtension entry == ".cabal"
+                  then do
+                    registrationFiles <- getPackageRegistrationFiles buildDir dir [entry]
+                    return buildNode
+                      { buildSources  = entry:buildSources buildNode
+                      , buildRegister = buildRegister buildNode ++ registrationFiles
+                      }
+                  else return buildNode
+
+              liftIO $ print buildNode'
+
+              processStream buildNode' dirStream
+
+    dirStream <- liftIO $ openDirStream (rootDir </> dir)
+    buildNode <- processStream emptyNode dirStream
+    liftIO $ closeDirStream dirStream
+    return buildNode
+
+-- | Walk the tree evaluating Shakefile.hs to discover .cabal files to build
+buildTree False (BuildChildren dir) = Just action where
   action = do
     rootDir <- requestOf penvRootDirectory
     buildDir <- requestOf penvBuildDirectory
@@ -307,11 +362,7 @@ buildTree (BuildChildren dir) = Just action where
     let (children, sources) = read stdout
 
     children' <- apply $ fmap (\ x -> BuildChildren $ dir </> x) children
-
-    registrationFiles <- forM sources $ \ pkg -> do
-      gdesc <- getPackageDescription $ dir </> pkg
-      let packageName = display . pkgName . package . packageDescription $ gdesc
-      return $! buildDir </> packageName </> "register"
+    registrationFiles <- getPackageRegistrationFiles buildDir dir sources
 
     return $! BuildNode
       { buildFile     = rootDir </> dir

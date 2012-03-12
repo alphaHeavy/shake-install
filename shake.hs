@@ -41,18 +41,29 @@ main = do
 
   sm <- cmdArgs shakeMode
 
+  -- need to scan directories to locate the .shake.database
   dirs@(rootDir, _) <- findDirectoryBounds
 
   numProcs <- getNumProcessors
   ghcPkgResource <- newResource "ghc-pkg register" 1
 
-  let threads = case sm of 
+  let threads = case sm of
         ShakeBuild{desiredThreads = Just t} -> t
         _  -> numProcs
 
-  shake shakeOptions{shakeFiles = rootDir </> ".shake", shakeThreads = threads, shakeVerbosity = desiredVerbosity sm} $ do
+      options = shakeOptions
+       { shakeFiles     = rootDir </> ".shake"
+       , shakeThreads   = threads
+       , shakeVerbosity = desiredVerbosity sm
+       , shakeStaunch   = desiredStaunch sm }
+
+      mode = case sm of
+        ShakeBuild{desiredRecurse = True} -> True
+        _                                 -> False
+
+  shake options $ do
     rule (configureTheEnvironment dirs sm)
-    rule buildTree
+    rule (buildTree mode)
     rule generatePackageMap
     initializePackageConf
     cabalConfigure

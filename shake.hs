@@ -16,7 +16,9 @@ import Development.Shake.Install.ShakeMode as Shake
 import Development.Shake.Install.Utils as Shake
 import GHC.Conc (getNumProcessors)
 import System.Console.CmdArgs
+import System.Exit (exitWith)
 import System.FilePath
+import System.Process (rawSystem)
 
 -- |
 -- Each build type has a set of targets they want built
@@ -102,5 +104,12 @@ main = do
       pkgConfDir <- requestOf penvPkgConfDirectory
       need [pkgConfDir </> "package.cache"]
 
-      applyBuildActions sm dirs
+      case sm of
+        ShakeGhci{desiredArgs} -> liftIO $ do
+          let desiredArgs' = "-package-conf=/Source/alphaHeavy.2/build/package.conf.d" : desiredArgs
+          ec <- rawSystem "ghci" desiredArgs'
+          exitWith ec
+
+        _ -> 
+          applyBuildActions sm dirs
 

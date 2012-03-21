@@ -31,6 +31,10 @@ data ShakeMode
       , desiredThreads   :: Maybe Int
       , desiredStaunch   :: Bool
       }
+
+  | ShakeGhci
+      { desiredArgs      :: [String]
+      }
     deriving (Show, Data, Typeable)
 
 shakeMode
@@ -60,6 +64,9 @@ shakeMode = modes
      , desiredThreads   = Nothing &= name "j" &= name "jobs" &= explicit &= help "Number of parallel jobs"
      , desiredStaunch   = False &= name "k" &= name "keep-going" &= explicit &= help "Continue as much as possible after an error"
      } &= name "install"
+  , ShakeGhci
+     { desiredArgs      = [] &= args
+     } &= name "ghci"
   ] &= program "shake"
 
 

@@ -134,10 +134,10 @@ getLocalBuildInfo
   :: FilePath
   -> Action LocalBuildInfo
 getLocalBuildInfo filePath = do
-    need [replaceFileName filePath "setup-config"]
+  need [replaceFileName filePath "setup-config"]
 
-    traced "getPersistBuildConfig" $
-      getPersistBuildConfig (takeDirectory filePath)
+  traced "getPersistBuildConfig" $
+    getPersistBuildConfig (takeDirectory filePath)
 
 -- |
 -- Module paths don't come with an extension. This should
@@ -154,7 +154,6 @@ tryNeedExtensions sourceDir modulePath = do
     exists <- liftIO $ Dir.doesFileExist filePlusExt
     when exists $
       need [filePlusExt]
-
 
 -- |
 -- The main build rule, should be equivalent to "cabal configure"
@@ -187,7 +186,12 @@ cabalConfigure = "//setup-config" *> action where
 
     need $ libDeps ++ exeDeps
 
-    runCabalAction filePath gdesc configAction
+    fileExists <- case getBuildType gdesc of
+      Just Custom -> liftIO $ Dir.doesFileExist filePath
+      _           -> return False
+
+    unless fileExists $
+      runCabalAction filePath gdesc configAction
 
 -- |
 -- The main build rule, should be equivalent to "cabal build"

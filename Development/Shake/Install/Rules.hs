@@ -39,6 +39,7 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.Simple.Configure
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Simple.Utils (getDirectoryContentsRecursive)
 import Distribution.Verbosity
 import Distribution.Text
 import Language.Haskell.Extension
@@ -146,9 +147,7 @@ tryNeedExtensions
   :: FilePath
   -> FilePath
   -> Action ()
-tryNeedExtensions filePath modulePath = do
-  sourceDir <- findSourceDirectory filePath
-
+tryNeedExtensions sourceDir modulePath = do
   let exts = [".hs", ".lhs", ".chs", ".hsc", ".x", ".y", ".ly", ".cpphs"]
   forM_ exts $ \ ext -> do
     let filePlusExt = sourceDir </> addExtension modulePath ext
@@ -202,9 +201,20 @@ cabalBuild = "//package.conf.inplace" *> action where
         allModules
           | Just lib <- library desc = libModules lib : fmap exeModules (executables desc)
           | otherwise = fmap exeModules (executables desc)
-        modulePaths = fmap toFilePath (concat allModules)
 
-    mapM_ (tryNeedExtensions filePath) modulePaths
+    sourceDir <- findSourceDirectory filePath
+    let attachSourceDir x = sourceDir </> x
+        getAllSourceFiles = do
+          contents <- getDirectoryContentsRecursive sourceDir
+          return . fmap attachSourceDir . filter ("//*.hs" ?==) $ contents
+
+    case library desc of
+      Nothing -> need =<< liftIO getAllSourceFiles
+      Just _  -> return ()
+
+    let modulePaths = fmap toFilePath (concat allModules)
+
+    mapM_ (tryNeedExtensions sourceDir) modulePaths
 
     runCabalAction filePath lbi buildAction
 

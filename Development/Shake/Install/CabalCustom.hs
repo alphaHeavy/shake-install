@@ -21,7 +21,7 @@ instance Cabal CabalCustom where
     pkgConfDir <- requestOf penvPkgConfDirectory
 
     sourceDir <- findSourceDirectory filePath
-    let args = ["configure", "-v0", "--prefix="++prefixDir, "--global", "--user", "--package-db="++pkgConfDir, "--builddir="++takeDirectory filePath]
+    let args = ["configure", "-v0", "--prefix="++prefixDir, "--global", "--disable-library-profiling", "--disable-executable-profiling", "--user", "--package-db="++pkgConfDir, "--builddir="++takeDirectory filePath]
     systemWithDirectory "cabal" sourceDir args
 
   buildAction _ filePath _ = do

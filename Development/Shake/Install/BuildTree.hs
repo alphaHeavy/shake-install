@@ -22,7 +22,7 @@ data BuildTree
     deriving (Read, Show, Eq, Typeable)
 
 instance Hashable BuildTree where
-  hash (BuildChildren str) = hash (2 :: Int, str)
+  hashWithSalt s (BuildChildren str) = hashWithSalt s (2 :: Int, str)
 
 instance NFData BuildTree where
   rnf (BuildChildren x1) = rnf x1 `seq` ()
@@ -48,7 +48,7 @@ data BuildNode = BuildNode
   } deriving (Read, Show, Eq, Data, Typeable)
 
 instance Hashable BuildNode where
-  hash BuildNode{..} = hash (buildFile, buildChildren, buildSources)
+  hashWithSalt s BuildNode{..} = hashWithSalt s (buildFile, buildChildren, buildSources)
 
 instance NFData BuildNode where
   rnf (BuildNode x1 x2 x3 x4)

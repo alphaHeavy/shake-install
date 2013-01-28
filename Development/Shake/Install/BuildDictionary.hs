@@ -30,10 +30,10 @@ instance NFData PackageName where
   rnf (PackageName x1) = rnf x1 `seq` ()
 
 instance Hashable (Map PackageName FilePath) where
-  hash = hash . toList
+  hashWithSalt s = hashWithSalt s . toList
 
 instance Hashable PackageName where
-  hash = hash . display
+  hashWithSalt s = hashWithSalt s . display
 
 instance Binary PackageName where
   get = fmap PackageName get

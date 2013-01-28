@@ -22,15 +22,15 @@ instance Typeable1 Request where
 
 instance Typeable a => Typeable (Request a) where
   typeOf = typeOfDefault
- 
+
 instance NFData (Request a) where
   rnf _ = ()
 
 instance Eq (Request a) where
-  _ == _ = True 
+  _ == _ = True
 
 instance Hashable (Request a) where
-  hash _ = 1
+  hashWithSalt _ _ = 1
 
 instance Binary (Request a) where
   get = return Request
@@ -46,7 +46,7 @@ deriving instance Ord a => Ord (Response a)
 deriving instance Typeable1 Response
 
 instance Hashable a => Hashable (Response a) where
-  hash (Response x) = hash x
+  hashWithSalt s (Response x) = hashWithSalt s x
 
 instance Binary a => Binary (Response a) where
   get = fmap Response get

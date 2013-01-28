@@ -35,7 +35,7 @@ instance Binary PersistedEnvironment where
         get
 
 instance Hashable PersistedEnvironment where
-  hash PersistedEnvironment{..} = hash
+  hashWithSalt s PersistedEnvironment{..} = hashWithSalt s
     ( penvEnvironment
     , penvRootDirectory
     , penvBuildDirectory

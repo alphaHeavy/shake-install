@@ -45,7 +45,7 @@ instance Cabal CabalSimple where
       let config' =
             (defaultConfigFlags config)
                { configInstallDirs = mempty{prefix = Setup.Flag prefixTemplate, libsubdir = Setup.Flag (toPathTemplate "$pkgid")}
-               , configPackageDB = Setup.Flag buildDatabase
+               , configPackageDBs = [Just buildDatabase]
                , configUserInstall = Setup.Flag True}
 
           commonBuildInfo = emptyBuildInfo{hsSourceDirs = [sourceDir]}

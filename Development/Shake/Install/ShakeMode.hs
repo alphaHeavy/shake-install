@@ -33,7 +33,10 @@ data ShakeMode
       }
 
   | ShakeGhci
-      { desiredArgs      :: [String]
+      { desiredVerbosity :: Shake.Verbosity
+      , desiredThreads   :: Maybe Int
+      , desiredArgs      :: [String]
+      , desiredStaunch   :: Bool
       }
     deriving (Show, Data, Typeable)
 
@@ -65,7 +68,10 @@ shakeMode = modes
      , desiredStaunch   = False &= name "k" &= name "keep-going" &= explicit &= help "Continue as much as possible after an error"
      } &= name "install"
   , ShakeGhci
-     { desiredArgs      = [] &= args
+     { desiredVerbosity = Shake.Normal &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
+     , desiredThreads   = Nothing &= name "j" &= name "jobs" &= explicit &= help "Number of parallel jobs"
+     , desiredStaunch   = False &= name "k" &= name "keep-going" &= explicit &= help "Continue as much as possible after an error"
+     , desiredArgs      = [] &= args
      } &= name "ghci"
   ] &= program "shake"
 

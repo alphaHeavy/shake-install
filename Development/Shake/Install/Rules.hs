@@ -32,6 +32,7 @@ import Development.Shake.Install.PersistedEnvironment as Shake
 import Development.Shake.Install.ShakeMode as Shake
 import Development.Shake.Install.Utils as Shake
 import Data.Generics.Uniplate.DataOnly
+import qualified Language.Haskell.Interpreter as Hint
 
 import Distribution.ModuleName (toFilePath)
 import Distribution.Package
@@ -318,10 +319,11 @@ getPackageRegistrationFiles buildDir dir =
 
 -- | Recurse the build tree looking for cabal packages to build
 buildTree
-  :: BuildStyle
+  :: Resource
+  -> BuildStyle
   -> BuildTree
   -> Maybe (Action BuildNode)
-buildTree BuildRecursiveWildcard{} (BuildChildren dir) = Just action where
+buildTree _ BuildRecursiveWildcard{} (BuildChildren dir) = Just action where
   action = do
     rootDir <- requestOf penvRootDirectory
     buildDir <- requestOf penvBuildDirectory
@@ -364,7 +366,7 @@ buildTree BuildRecursiveWildcard{} (BuildChildren dir) = Just action where
 
     return buildNode
 
-buildTree BuildWithExplicitPaths{..} bc@(BuildChildren dir) = Just action where
+buildTree _ BuildWithExplicitPaths{..} bc@(BuildChildren dir) = Just action where
   action = do
     rootDir <- requestOf penvRootDirectory
     buildDir <- requestOf penvBuildDirectory
@@ -386,7 +388,7 @@ buildTree BuildWithExplicitPaths{..} bc@(BuildChildren dir) = Just action where
 
 
 -- | Walk the tree evaluating Shakefile.hs to discover .cabal files to build
-buildTree BuildViaShakefile{} (BuildChildren dir) = Just action where
+buildTree hintResource BuildViaShakefile{} (BuildChildren dir) = Just action where
   action = do
     rootDir <- requestOf penvRootDirectory
     buildDir <- requestOf penvBuildDirectory
@@ -394,17 +396,22 @@ buildTree BuildViaShakefile{} (BuildChildren dir) = Just action where
     let shakefile = rootDir </> dir </> "Shakefile.hs"
 
     need [shakefile]
-    (stdout, _) <- systemOutput "ghc" [shakefile, "-e", "print (children :: [String], sources :: [String])"]
 
-    let (children, sources) = read stdout
+    res <- withResource hintResource 1 $ liftIO . Hint.runInterpreter $ do
+      Hint.reset
+      Hint.loadModules [shakefile]
+      Hint.setImports ["Prelude", "Main"]
+      Hint.interpret "(Main.children, Main.sources)" (undefined :: ([String], [String]))
 
-    children' <- apply $ fmap (\ x -> BuildChildren $ dir </> x) children
-    registrationFiles <- getPackageRegistrationFiles buildDir dir sources
+    case res of
+      Left err -> fail $ "Error while interpreting " ++ shakefile ++ ": " ++ show err
+      Right (children, sources) -> do
+        children' <- apply $ fmap (\ x -> BuildChildren $ dir </> x) children
+        registrationFiles <- getPackageRegistrationFiles buildDir dir sources
 
-    return $! BuildNode
-      { buildFile     = rootDir </> dir
-      , buildChildren = children'
-      , buildSources  = sources
-      , buildRegister = registrationFiles
-      }
-
+        return $! BuildNode
+          { buildFile     = rootDir </> dir
+          , buildChildren = children'
+          , buildSources  = sources
+          , buildRegister = registrationFiles
+          }

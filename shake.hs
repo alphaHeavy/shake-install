@@ -75,6 +75,7 @@ main = do
 
   numProcs <- getNumProcessors
   ghcPkgResource <- newResource "ghc-pkg register" 1
+  hintResource <- newResource "hint interpreter" 1
 
   let threads = case sm of
         ShakeBuild{desiredThreads = Just t} -> t
@@ -90,7 +91,7 @@ main = do
 
   shake options $ do
     rule (configureTheEnvironment dirs sm)
-    rule (buildTree style)
+    rule (buildTree hintResource style)
     rule generatePackageMap
     initializePackageConf
     cabalConfigure

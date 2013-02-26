@@ -27,6 +27,7 @@ Executable shake
                      directory    ,
                      filepath     ,
                      hashable     ,
+                     hint         ,
                      process      ,
                      shake        < 0.4,
                      uniplate     ,

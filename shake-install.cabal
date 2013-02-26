@@ -19,19 +19,19 @@ Executable shake
   GHC-Options:       -Wall -threaded -rtsopts "-with-rtsopts=-qg1 -N"
 
   Build-depends:     base         >= 4.4 && < 5,
-                     binary       == 0.5.*,
-                     Cabal        == 1.14.*,
-                     cmdargs      == 0.9.*,
-                     containers   == 0.4.*,
-                     deepseq      == 1.3.*,
-                     directory    == 1.1.*,
-                     filepath     == 1.3.*,
-                     hashable     == 1.1.*,
-                     process      == 1.1.*,
-                     shake        >= 0.2.8 && < 0.3,
-                     uniplate     == 1.6.*,
-                     unix         == 2.5.*
-  
+                     binary       ,
+                     Cabal        ,
+                     cmdargs      ,
+                     containers   ,
+                     deepseq      ,
+                     directory    ,
+                     filepath     ,
+                     hashable     ,
+                     process      ,
+                     shake        < 0.4,
+                     uniplate     ,
+                     unix
+
   Other-modules:     Development.Shake.Install.BuildDictionary
                      Development.Shake.Install.BuildTree
                      Development.Shake.Install.Cabal

@@ -278,7 +278,7 @@ ghcPkgRegister res = "//register" *> action where
     case library . localPkgDescr $ lbi of
       Just Library{libBuildInfo = BuildInfo{buildable = True}} ->
         withResource res 1 $
-          system' "ghc-pkg" ["update", "-v0", "--global", "--user", "--package-conf="++pkgConfDir, pkgConf]
+          system' "ghc-pkg" ["update", "-v0", "--global", "--user", "--package-db="++pkgConfDir, pkgConf]
 
       _ -> do
         -- executables are not registered but it's convenient to pretend they are

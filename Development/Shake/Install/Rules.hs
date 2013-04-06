@@ -183,7 +183,11 @@ cabalConfigure = "//setup-config" *> action where
           [ buildDir </> name </> "register"
           | (_, exe) <- condExecutables gdesc
           , Dependency pn@(PackageName name) _ <-  condTreeConstraints exe
-          , Map.member pn packages ]
+          -- are we referencing a dependency in this build tree?
+          , Map.member pn packages
+          -- but not a library in the same cabal file
+          , pn /= (pkgName . package . packageDescription $ gdesc)
+          ]
 
     need $ libDeps ++ exeDeps
 

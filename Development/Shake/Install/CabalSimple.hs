@@ -46,9 +46,12 @@ instance Cabal CabalSimple where
             (defaultConfigFlags config)
                { configInstallDirs = mempty{prefix = Setup.Flag prefixTemplate, libsubdir = Setup.Flag (toPathTemplate "$pkgid")}
                , configPackageDBs = [Just buildDatabase]
-               , configUserInstall = Setup.Flag True}
+               , configUserInstall = Setup.Flag True
+               , configTests = Setup.Flag True}
+--               , configProfLib = Setup.Flag True
+--               , configProfExe = Setup.Flag True}
 
-          commonBuildInfo = emptyBuildInfo{hsSourceDirs = [sourceDir]}
+          commonBuildInfo = emptyBuildInfo{hsSourceDirs = [sourceDir] ++ [sourceDir </> "tests"]} --todo need to get this from gdesh
           hooked = (Just commonBuildInfo, []) -- TODO: array should have exe names and buildInfo
           buildDatabase = SpecificPackageDB pkgConfDir
 

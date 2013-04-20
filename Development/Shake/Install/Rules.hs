@@ -188,8 +188,17 @@ cabalConfigure = "//setup-config" *> action where
           -- but not a library in the same cabal file
           , pn /= (pkgName . package . packageDescription $ gdesc)
           ]
+        testDeps =
+          [ buildDir </> name </> "register"
+          | (_, test) <- condTestSuites gdesc
+          , Dependency pn@(PackageName name) _ <-  condTreeConstraints test
+          -- are we referencing a dependency in this build tree?
+          , Map.member pn packages
+          -- but not a library in the same cabal file
+          , pn /= (pkgName . package . packageDescription $ gdesc)
+          ]
 
-    need $ libDeps ++ exeDeps
+    need $ libDeps ++ exeDeps ++ testDeps
 
     fileExists <- case getBuildType gdesc of
       Just Custom -> liftIO $ Dir.doesFileExist filePath

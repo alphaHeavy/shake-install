@@ -218,7 +218,7 @@ cabalBuild = "//package.conf.inplace" *> action where
     let desc = localPkgDescr lbi
         allModules
           | Just lib <- library desc = libModules lib : fmap exeModules (executables desc)
-          | otherwise = fmap exeModules (executables desc)
+          | otherwise = (fmap exeModules (executables desc)) ++ (fmap testModules (testSuites desc))
 
     sourceDir <- findSourceDirectory filePath
     let attachSourceDir x = sourceDir </> x

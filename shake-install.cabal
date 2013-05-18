@@ -20,6 +20,7 @@ Executable shake
 
   Build-depends:     base         >= 4.4 && < 5,
                      binary       ,
+                     bin-package-db ,
                      Cabal        ,
                      cmdargs      ,
                      containers   ,
@@ -30,7 +31,7 @@ Executable shake
                      hint         ,
                      lens         ,
                      process      ,
-                     shake        < 0.4,
+                     shake        > 0.4,
                      uniplate     ,
                      unix
 

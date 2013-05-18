@@ -7,7 +7,6 @@ module Development.Shake.Install.CabalSimple
 import Control.Applicative
 import Data.Monoid
 import Development.Shake as Shake
-import Development.Shake.Install.RequestResponse as Shake
 import Development.Shake.Install.Cabal as Shake
 import Development.Shake.Install.BuildDictionary as Shake
 import Development.Shake.Install.PersistedEnvironment as Shake
@@ -33,11 +32,12 @@ data CabalSimple = CabalSimple
 instance Cabal CabalSimple where
   -- | run the configuration action and write the resolved config out as 'setup-config'
   configAction _ filePath gdesc = do
-    prefixTemplate <- fmap toPathTemplate $ requestOf penvPrefixDirectory
-    pkgConfDir <- requestOf penvPkgConfDirectory
+    ourEnv <- askOracle (PersistedEnvironmentRequest ())
+    let prefixTemplate = toPathTemplate $ penvPrefixDirectory ourEnv
+        pkgConfDir     = penvPkgConfDirectory ourEnv
+        packageName = display . pkgName . package . packageDescription $ gdesc
+        buildDirectory = penvBuildDirectory ourEnv
 
-    let packageName = display . pkgName . package . packageDescription $ gdesc
-    buildDirectory <- requestOf penvBuildDirectory
     sourceDir <- findSourceDirectory filePath
     let programDbPath = pkgConfDir </> "program.db"
     need [programDbPath]
@@ -80,7 +80,7 @@ instance Cabal CabalSimple where
     system' "touch" [filePath]
 
   registerAction _ filePath lbi = do
-    pkgConfDir <- requestOf penvPkgConfDirectory
+    pkgConfDir <- penvPkgConfDirectory <$> askOracle (PersistedEnvironmentRequest ())
 
     traced "cabal register" $ do
       let flags = defaultRegisterFlags{regPackageDB = Setup.Flag (SpecificPackageDB pkgConfDir), regGenPkgConf = Setup.Flag (Just filePath)}

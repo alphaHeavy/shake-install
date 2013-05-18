@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Development.Shake.Install.PersistedEnvironment where
@@ -8,6 +9,9 @@ import Control.Monad (liftM5)
 import Data.Binary
 import Data.Hashable
 import Data.Typeable
+
+newtype PersistedEnvironmentRequest = PersistedEnvironmentRequest ()
+  deriving (Eq, Show, Binary, NFData, Hashable, Typeable)
 
 data PersistedEnvironment = PersistedEnvironment
   { penvEnvironment      :: [(String, String)]
@@ -50,4 +54,3 @@ instance NFData PersistedEnvironment where
     rnf penvPrefixDirectory `seq`
     rnf penvPkgConfDirectory `seq`
     ()
-

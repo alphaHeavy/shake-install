@@ -19,10 +19,11 @@ module Development.Shake.Install.Rules
   , initializeProgramDb
   ) where
 
+import Control.Applicative ((<$>))
 import Control.Monad
+import Data.Map (Map)
 import qualified Data.Map as Map
 import Development.Shake as Shake
-import Development.Shake.Install.RequestResponse as Shake
 import Development.Shake.Install.BuildDictionary as Shake
 import Development.Shake.Install.BuildTree as Shake
 import Development.Shake.Install.Cabal as Shake
@@ -39,7 +40,7 @@ import Distribution.ModuleName (toFilePath)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Parse (readPackageDescription)
-import Distribution.Simple (CompilerFlavor(GHC), PackageDB(SpecificPackageDB), pkgName)
+import Distribution.Simple (CompilerFlavor(GHC))
 import Distribution.Simple.Configure
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program (defaultProgramConfiguration)
@@ -56,23 +57,22 @@ import System.Posix.Directory
 configureTheEnvironment
   :: (FilePath, FilePath)
   -> ShakeMode
-  -> Request PersistedEnvironment
-  -> Maybe (Action (Response PersistedEnvironment))
-configureTheEnvironment (rootDir, _) sm _ = Just action where
-  action = do
-    env <- liftIO getEnvironment
-    let penv = PersistedEnvironment
-          { penvEnvironment      = env
-          , penvRootDirectory    = rootDir
-          , penvBuildDirectory   = rootDir </> "build"
-          , penvPrefixDirectory  = pfx
-          , penvPkgConfDirectory = rootDir </> "build" </> "package.conf.d"
-          }
+  -> PersistedEnvironmentRequest
+  -> Action PersistedEnvironment
+configureTheEnvironment (rootDir, _) sm _ = do
+  env <- liftIO getEnvironment
+  let penv = PersistedEnvironment
+        { penvEnvironment      = env
+        , penvRootDirectory    = rootDir
+        , penvBuildDirectory   = rootDir </> "build"
+        , penvPrefixDirectory  = pfx
+        , penvPkgConfDirectory = rootDir </> "build" </> "package.conf.d"
+        }
 
-        pfx | ShakeConfigure{desiredPrefix = prefix} <- sm = rootDir </> prefix
-            | otherwise = rootDir </> "build" </> "dist"
+      pfx | ShakeConfigure{desiredPrefix = prefix} <- sm = rootDir </> prefix
+          | otherwise = rootDir </> "build" </> "dist"
 
-    return $! Response penv
+  return penv
 
 -- | Create or reinitialize the packge.conf.d, should be performed as top level
 -- step that no other rules depend on. Since the package.cache file is continually
@@ -88,7 +88,7 @@ initializePackageConf = "//package.conf.d/package.cache" *> action where
       if hasPkgCache
         then return False
         else do
-          corruptPackageConf <- doesDirectoryExist pkgConfDirectory
+          corruptPackageConf <- Dir.doesDirectoryExist pkgConfDirectory
           when corruptPackageConf $
             removeDirectoryRecursive pkgConfDirectory
 
@@ -117,7 +117,7 @@ noTemplateHaskell
   :: GetBuildType arg
   => arg
   -> Bool
-noTemplateHaskell = not . any (== EnableExtension TemplateHaskell) . exts where
+noTemplateHaskell = notElem (EnableExtension TemplateHaskell) . exts where
   exts = concat . fmap allExtensions . getBuildInfo
 
 -- |
@@ -173,11 +173,12 @@ cabalConfigure
 cabalConfigure = "//setup-config" *> action where
   action filePath = do
     sourceDir <- findSourceDirectory filePath
-    buildDir <- requestOf penvBuildDirectory
+    buildDir <- penvBuildDirectory <$> askOracle (PersistedEnvironmentRequest ())
 
     let fixupPackageDesc = fixupGenericPaths sourceDir
 
-    packages <- requestOf unBuildDict -- (Request :: Request BuildDictionary)
+    packages <- askOracle (BuildDictionary ())
+    let _ = packages :: Map PackageName FilePath
     cabalPath <- findCabalFile filePath
     gdesc <- fmap fixupPackageDesc $ getPackageDescription cabalPath
 
@@ -289,15 +290,17 @@ cabalRegister = "//pkg.config" *> action where
 -- "update" is used instead of "register" so incremental builds don't error out
 -- when the package is added to the package.conf.d and cache
 ghcPkgRegister
-  :: Resource -- ^ singleton resource lock, "ghc-pkg register" must be serialized
-  -> Rules ()
-ghcPkgRegister res = "//register" *> action where
-  action filePath = do
+  :: Rules ()
+ghcPkgRegister = do
+  -- singleton resource lock, "ghc-pkg register" must be serialized
+  res <- newResource "ghc-pkg register" 1
+
+  "//register" *> \ filePath -> do
     let pkgConf = replaceFileName filePath "pkg.config"
     need [pkgConf]
 
     lbi <- getLocalBuildInfo filePath
-    pkgConfDir <- requestOf penvPkgConfDirectory
+    pkgConfDir <- penvPkgConfDirectory <$> askOracle (PersistedEnvironmentRequest ())
 
     case library . localPkgDescr $ lbi of
       Just Library{libBuildInfo = BuildInfo{buildable = True}} ->
@@ -314,20 +317,19 @@ ghcPkgRegister res = "//register" *> action where
 -- |
 -- Generate a lookup dictionary used to map a PackageName to its location in the build tree
 generatePackageMap
-  :: Request BuildDictionary
-  -> Maybe (Action (Response BuildDictionary))
-generatePackageMap _ = Just action where
-  action = do
-    rootDir <- requestOf penvRootDirectory
-    whatever <- apply1 (BuildChildren rootDir)
-    let packages = [(source, buildFile) | BuildNode{buildFile, buildSources} <- universe whatever, source <- buildSources]
-    pkgList <- forM packages $ \ (cabalFile, buildFile) -> do
-      let cabalFile' = buildFile </> cabalFile
-      gdesc <- getPackageDescription cabalFile'
-      let packageName = pkgName . package . packageDescription $ gdesc
-      return $! (packageName, cabalFile')
+  :: BuildDictionary
+  -> Action (Map PackageName FilePath)
+generatePackageMap _ = do
+  rootDir <- penvRootDirectory <$> askOracle (PersistedEnvironmentRequest ())
+  whatever <- apply1 (BuildChildren rootDir)
+  let packages = [(source, buildFile) | BuildNode{buildFile, buildSources} <- universe whatever, source <- buildSources]
+  pkgList <- forM packages $ \ (cabalFile, buildFile) -> do
+    let cabalFile' = buildFile </> cabalFile
+    gdesc <- getPackageDescription cabalFile'
+    let packageName = pkgName . package . packageDescription $ gdesc
+    return (packageName, cabalFile')
 
-    return . Response . BuildDictionary $ Map.fromList pkgList
+  return $ Map.fromList pkgList
 
 getPackageRegistrationFiles
   :: FilePath
@@ -348,8 +350,9 @@ buildTree
   -> Maybe (Action BuildNode)
 buildTree _ BuildRecursiveWildcard{} (BuildChildren dir) = Just action where
   action = do
-    rootDir <- requestOf penvRootDirectory
-    buildDir <- requestOf penvBuildDirectory
+    ourEnv <- askOracle (PersistedEnvironmentRequest ())
+    let rootDir = penvRootDirectory ourEnv
+        buildDir = penvBuildDirectory ourEnv
 
     let emptyNode = BuildNode
           { buildFile     = rootDir </> dir
@@ -364,7 +367,7 @@ buildTree _ BuildRecursiveWildcard{} (BuildChildren dir) = Just action where
           if null entry
             then return buildNode
             else do
-              isDir <- liftIO $ doesDirectoryExist entry
+              isDir <- Shake.doesDirectoryExist entry
               buildNode' <- if isDir && entry /= "." && entry /= ".."
                 then do
                   child <- apply1 $ BuildChildren (dir </> entry)
@@ -391,8 +394,9 @@ buildTree _ BuildRecursiveWildcard{} (BuildChildren dir) = Just action where
 
 buildTree _ BuildWithExplicitPaths{..} bc@(BuildChildren dir) = Just action where
   action = do
-    rootDir <- requestOf penvRootDirectory
-    buildDir <- requestOf penvBuildDirectory
+    ourEnv <- askOracle (PersistedEnvironmentRequest ())
+    let rootDir = penvRootDirectory ourEnv
+        buildDir = penvBuildDirectory ourEnv
     currentDir <- liftIO getCurrentDirectory
 
     -- only depend on other root directories once
@@ -402,7 +406,7 @@ buildTree _ BuildWithExplicitPaths{..} bc@(BuildChildren dir) = Just action wher
 
     registrationFiles <- getPackageRegistrationFiles buildDir currentDir buildCabalFiles
 
-    return $! BuildNode
+    return BuildNode
       { buildFile     = rootDir </> dir
       , buildChildren = children'
       , buildSources  = buildCabalFiles
@@ -413,10 +417,10 @@ buildTree _ BuildWithExplicitPaths{..} bc@(BuildChildren dir) = Just action wher
 -- | Walk the tree evaluating Shakefile.hs to discover .cabal files to build
 buildTree hintResource BuildViaShakefile{} (BuildChildren dir) = Just action where
   action = do
-    rootDir <- requestOf penvRootDirectory
-    buildDir <- requestOf penvBuildDirectory
-
-    let shakefile = rootDir </> dir </> "Shakefile.hs"
+    ourEnv <- askOracle (PersistedEnvironmentRequest ())
+    let rootDir = penvRootDirectory ourEnv
+        buildDir = penvBuildDirectory ourEnv
+        shakefile = rootDir </> dir </> "Shakefile.hs"
 
     need [shakefile]
 
@@ -432,7 +436,7 @@ buildTree hintResource BuildViaShakefile{} (BuildChildren dir) = Just action whe
         children' <- apply $ fmap (\ x -> BuildChildren $ dir </> x) children
         registrationFiles <- getPackageRegistrationFiles buildDir dir sources
 
-        return $! BuildNode
+        return BuildNode
           { buildFile     = rootDir </> dir
           , buildChildren = children'
           , buildSources  = sources

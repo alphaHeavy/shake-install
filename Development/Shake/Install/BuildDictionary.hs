@@ -15,12 +15,13 @@ import Data.Binary
 import Data.Data
 import Data.Hashable
 import Data.Map as Map
+import Distribution.InstalledPackageInfo.Binary ()
 import Distribution.Package
 import Distribution.Text (display)
 import System.FilePath
 
-import Development.Shake (Action)
-import Development.Shake.Install.RequestResponse (requestOf)
+import Development.Shake (Action, askOracle)
+-- import Development.Shake.Install.RequestResponse (requestOf)
 
 instance NFData PackageIdentifier where
   rnf (PackageIdentifier x1 x2)
@@ -35,20 +36,22 @@ instance Hashable (Map PackageName FilePath) where
 instance Hashable PackageName where
   hashWithSalt s = hashWithSalt s . display
 
-instance Binary PackageName where
-  get = fmap PackageName get
-  put = put . display
-
-newtype BuildDictionary = BuildDictionary{unBuildDict :: Map PackageName FilePath}
+newtype BuildDictionary = BuildDictionary ()
   deriving (Read, Show, Eq, Typeable, NFData, Binary, Hashable)
 
 deriving instance Typeable PackageName
+
+{-
+cabalBlah :: Rules ()
+cabalBlah = do
+  addOracle $ \(
+  -}
 
 findCabalFile
   :: FilePath
   -> Action FilePath
 findCabalFile filePath = do
-  dict <- requestOf unBuildDict
+  dict <- askOracle (BuildDictionary ())
   let packageName = takeBaseName $ takeDirectory filePath
   case Map.lookup (PackageName packageName) dict of
     Just x -> return x
@@ -59,4 +62,3 @@ findSourceDirectory
   -> Action FilePath
 findSourceDirectory filePath =
   fmap takeDirectory $ findCabalFile filePath
-

@@ -2,11 +2,11 @@ module Development.Shake.Install.CabalCustom
   ( CabalCustom(..)
   ) where
 
+import Control.Applicative
 import Development.Shake
 import Development.Shake.Install.BuildDictionary as Shake
 import Development.Shake.Install.Cabal
 import Development.Shake.Install.PersistedEnvironment as Shake
-import Development.Shake.Install.RequestResponse (requestOf)
 import Development.Shake.Install.Utils as Shake
 import System.FilePath
 
@@ -17,8 +17,8 @@ data CabalCustom = CabalCustom
 
 instance Cabal CabalCustom where
   configAction _ filePath _ = do
-    prefixDir  <- requestOf penvPrefixDirectory
-    pkgConfDir <- requestOf penvPkgConfDirectory
+    prefixDir  <- penvPrefixDirectory <$> askOracle (PersistedEnvironmentRequest ())
+    pkgConfDir <- penvPkgConfDirectory <$> askOracle (PersistedEnvironmentRequest ())
 
     sourceDir <- findSourceDirectory filePath
     let args = ["configure", "-v0", "--prefix="++prefixDir, "--global", "--disable-shared", "--disable-library-profiling", "--disable-executable-profiling", "--user", "--package-db="++pkgConfDir, "--builddir="++takeDirectory filePath]

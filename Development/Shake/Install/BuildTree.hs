@@ -68,5 +68,4 @@ instance Binary BuildNode where
            return (BuildNode x1 x2 x3 x4) }
 
 instance Rule BuildTree BuildNode where
-  validStored _ _ = return True
-
+  storedValue _ = return Nothing

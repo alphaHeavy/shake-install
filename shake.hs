@@ -94,6 +94,7 @@ main = do
     rule (buildTree hintResource style)
     rule generatePackageMap
     initializePackageConf
+    initializeProgramDb
     cabalConfigure
     cabalBuild
     cabalCopy
@@ -103,7 +104,7 @@ main = do
     action $ do
       -- make sure this is not needed directly by any packages
       pkgConfDir <- requestOf penvPkgConfDirectory
-      need [pkgConfDir </> "package.cache"]
+      need [pkgConfDir </> "package.cache", pkgConfDir </> "program.db"]
 
       case sm of
         ShakeGhci{desiredArgs} -> liftIO $ do

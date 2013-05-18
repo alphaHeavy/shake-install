@@ -16,6 +16,7 @@ module Development.Shake.Install.Rules
   , ghcPkgRegister
   , buildTree
   , generatePackageMap
+  , initializeProgramDb
   ) where
 
 import Control.Monad
@@ -38,8 +39,10 @@ import Distribution.ModuleName (toFilePath)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Parse (readPackageDescription)
+import Distribution.Simple (CompilerFlavor(GHC), PackageDB(SpecificPackageDB), pkgName)
 import Distribution.Simple.Configure
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Simple.Program (defaultProgramConfiguration)
 import Distribution.Simple.Utils (getDirectoryContentsRecursive)
 import Distribution.Verbosity
 import Distribution.Text
@@ -93,6 +96,13 @@ initializePackageConf = "//package.conf.d/package.cache" *> action where
 
     when needsInit $
       system' "ghc-pkg" ["init", pkgConfDirectory]
+
+initializeProgramDb
+  :: Rules ()
+initializeProgramDb = "//program.db" *> action where
+  action filePath = do
+    (_, config) <- liftIO $ configCompiler (Just GHC) Nothing Nothing defaultProgramConfiguration normal
+    writeFile' filePath (show config)
 
 getPackageDescription
   :: FilePath

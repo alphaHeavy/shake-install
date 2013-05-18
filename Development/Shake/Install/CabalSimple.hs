@@ -4,6 +4,7 @@ module Development.Shake.Install.CabalSimple
   ( CabalSimple(..)
   ) where
 
+import Control.Applicative
 import Data.Monoid
 import Development.Shake as Shake
 import Development.Shake.Install.RequestResponse as Shake
@@ -13,16 +14,16 @@ import Development.Shake.Install.PersistedEnvironment as Shake
 import Development.Shake.Install.Utils (fixupHsSourceDirs, makePackageDescriptionPathsAbsolute)
 
 import Distribution.PackageDescription (package, packageDescription)
-import Distribution.Simple (CompilerFlavor(GHC), PackageDB(SpecificPackageDB), pkgName)
-import Distribution.Simple.Configure (configCompiler, configure, writePersistBuildConfig)
+import Distribution.Simple (PackageDB(SpecificPackageDB), pkgName)
+import Distribution.Simple.Configure (configure, writePersistBuildConfig)
 import Distribution.Simple.PreProcess (knownSuffixHandlers)
-import Distribution.Simple.Program (defaultProgramConfiguration)
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Install (install)
 import Distribution.Simple.Register (register)
 import Distribution.Simple.Build (build)
+import Distribution.Simple.Program.Builtin (builtinPrograms)
+import Distribution.Simple.Program.Db (restoreProgramDb)
 import Distribution.Simple.Setup as Setup
-import Distribution.Verbosity (normal)
 import Distribution.Text (display)
 
 import System.FilePath
@@ -38,10 +39,11 @@ instance Cabal CabalSimple where
     let packageName = display . pkgName . package . packageDescription $ gdesc
     buildDirectory <- requestOf penvBuildDirectory
     sourceDir <- findSourceDirectory filePath
+    let programDbPath = pkgConfDir </> "program.db"
+    need [programDbPath]
+    config <- restoreProgramDb builtinPrograms . read <$> readFile' programDbPath
 
     traced "configure" $ do
-      (_, config) <- configCompiler (Just GHC) Nothing Nothing defaultProgramConfiguration normal
-
       let config' =
             (defaultConfigFlags config)
                { configInstallDirs = mempty{prefix = Setup.Flag prefixTemplate, libsubdir = Setup.Flag (toPathTemplate "$pkgid")}

@@ -3,10 +3,12 @@
 
 module Development.Shake.Install.Utils where
 
+import Control.Lens
 import Control.Monad (when)
-import Development.Shake (Action, traced)
+import Development.Shake as Shake (Action, traced)
 import Development.Shake.Install.PersistedEnvironment as Shake
 import Development.Shake.Install.RequestResponse (requestOf)
+import qualified Development.Shake.Install.PackageDescription as Shake
 import Distribution.PackageDescription
 import System.Directory
 import System.Exit
@@ -17,7 +19,7 @@ systemWithDirectory
   :: String
   -> String
   -> [String]
-  -> Action ()
+  -> Shake.Action ()
 systemWithDirectory command cwd args = do
   env <- requestOf penvEnvironment
 
@@ -39,6 +41,16 @@ fixupGenericPaths
   -> GenericPackageDescription
 fixupGenericPaths filePath gdesc@GenericPackageDescription{packageDescription} =
   gdesc{packageDescription = makePackageDescriptionPathsAbsolute filePath packageDescription}
+
+fixupHsSourceDirs :: FilePath -> GenericPackageDescription -> GenericPackageDescription
+fixupHsSourceDirs sourceDirectory = lbi . ebi . tbi . bmi where
+  lbi = Shake.libraryBuildInfo     . Shake._hsSourceDirs %~ makeAbsolute
+  ebi = Shake.executableBuildInfos . Shake._hsSourceDirs %~ makeAbsolute
+  tbi = Shake.testSuiteBuildInfos  . Shake._hsSourceDirs %~ makeAbsolute
+  bmi = Shake.benchmarkBuildInfos  . Shake._hsSourceDirs %~ makeAbsolute
+  makeAbsolute fileName
+    | Prelude.null fileName = fileName
+    | otherwise             = combine sourceDirectory fileName
 
 makePackageDescriptionPathsAbsolute
   :: FilePath

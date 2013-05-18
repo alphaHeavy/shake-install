@@ -10,9 +10,9 @@ import Development.Shake.Install.RequestResponse as Shake
 import Development.Shake.Install.Cabal as Shake
 import Development.Shake.Install.BuildDictionary as Shake
 import Development.Shake.Install.PersistedEnvironment as Shake
-import Development.Shake.Install.Utils (makePackageDescriptionPathsAbsolute)
+import Development.Shake.Install.Utils (fixupHsSourceDirs, makePackageDescriptionPathsAbsolute)
 
-import Distribution.PackageDescription (package, packageDescription, emptyBuildInfo, hsSourceDirs)
+import Distribution.PackageDescription (package, packageDescription)
 import Distribution.Simple (CompilerFlavor(GHC), PackageDB(SpecificPackageDB), pkgName)
 import Distribution.Simple.Configure (configCompiler, configure, writePersistBuildConfig)
 import Distribution.Simple.PreProcess (knownSuffixHandlers)
@@ -51,11 +51,10 @@ instance Cabal CabalSimple where
 --               , configProfLib = Setup.Flag True
 --               , configProfExe = Setup.Flag True}
 
-          commonBuildInfo = emptyBuildInfo{hsSourceDirs = [sourceDir] ++ [sourceDir </> "tests"]} --todo need to get this from gdesh
-          hooked = (Just commonBuildInfo, []) -- TODO: array should have exe names and buildInfo
           buildDatabase = SpecificPackageDB pkgConfDir
 
-      lbi <- configure (gdesc, hooked) config'
+      let gdesc' = fixupHsSourceDirs sourceDir gdesc
+      lbi <- configure (gdesc', (Nothing, [])) config'
 
       let lbi' = lbi{localPkgDescr = updatedDesc, buildDir = buildDirectory </> packageName}
           updatedDesc = makePackageDescriptionPathsAbsolute sourceDir (localPkgDescr lbi)

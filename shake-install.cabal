@@ -28,6 +28,7 @@ Executable shake
                      filepath     ,
                      hashable     ,
                      hint         ,
+                     lens         ,
                      process      ,
                      shake        < 0.4,
                      uniplate     ,
@@ -40,6 +41,7 @@ Executable shake
                      Development.Shake.Install.CabalSimple
                      Development.Shake.Install.Exceptions
                      Development.Shake.Install.GetBuildType
+                     Development.Shake.Install.PackageDescription
                      Development.Shake.Install.PersistedEnvironment
                      Development.Shake.Install.RequestResponse
                      Development.Shake.Install.Rules

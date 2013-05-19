@@ -20,9 +20,11 @@ module Development.Shake.Install.Rules
   ) where
 
 import Control.Applicative ((<$>))
+import Control.DeepSeq
 import Control.Monad
 import Data.Map (Map)
 import qualified Data.Map as Map
+import qualified Data.Binary as Binary
 import Development.Shake as Shake
 import Development.Shake.Install.BuildDictionary as Shake
 import Development.Shake.Install.BuildTree as Shake
@@ -57,22 +59,31 @@ import System.Posix.Directory
 configureTheEnvironment
   :: (FilePath, FilePath)
   -> ShakeMode
-  -> PersistedEnvironmentRequest
-  -> Action PersistedEnvironment
-configureTheEnvironment (rootDir, _) sm _ = do
-  env <- liftIO getEnvironment
-  let penv = PersistedEnvironment
-        { penvEnvironment      = env
-        , penvRootDirectory    = rootDir
-        , penvBuildDirectory   = rootDir </> "build"
-        , penvPrefixDirectory  = pfx
-        , penvPkgConfDirectory = rootDir </> "build" </> "package.conf.d"
-        }
+  -> Rules ()
+configureTheEnvironment (rootDir, _) sm = do
+  fetch <- newCache Binary.decodeFile
 
-      pfx | ShakeConfigure{desiredPrefix = prefix} <- sm = rootDir </> prefix
-          | otherwise = rootDir </> "build" </> "dist"
+  rule $ \ (PersistedEnvironmentRequest _) -> Just $ do
+    let fp = "/tmp/env.bin"
+    exists <- liftIO $ Dir.doesFileExist fp
+    if exists
+      then fetch fp
+      else do
+        env <- liftIO getEnvironment
+        let penv = PersistedEnvironment
+              { penvEnvironment      = env
+              , penvRootDirectory    = rootDir
+              , penvBuildDirectory   = rootDir </> "build"
+              , penvPrefixDirectory  = pfx
+              , penvPkgConfDirectory = rootDir </> "build" </> "package.conf.d"
+              }
 
-  return penv
+            pfx | ShakeConfigure{desiredPrefix = prefix} <- sm = rootDir </> prefix
+                | otherwise = rootDir </> "build" </> "dist"
+
+        liftIO $ Binary.encodeFile fp penv
+
+        return penv
 
 -- | Create or reinitialize the packge.conf.d, should be performed as top level
 -- step that no other rules depend on. Since the package.cache file is continually
@@ -173,11 +184,9 @@ cabalConfigure
 cabalConfigure = "//setup-config" *> action where
   action filePath = do
     sourceDir <- findSourceDirectory filePath
-    buildDir <- penvBuildDirectory <$> askOracle (PersistedEnvironmentRequest ())
-
+    buildDir <- penvBuildDirectory <$> apply1 (PersistedEnvironmentRequest ())
+    packages <- apply1 (BuildDictionary ())
     let fixupPackageDesc = fixupGenericPaths sourceDir
-
-    packages <- askOracle (BuildDictionary ())
     let _ = packages :: Map PackageName FilePath
     cabalPath <- findCabalFile filePath
     gdesc <- fmap fixupPackageDesc $ getPackageDescription cabalPath
@@ -300,7 +309,7 @@ ghcPkgRegister = do
     need [pkgConf]
 
     lbi <- getLocalBuildInfo filePath
-    pkgConfDir <- penvPkgConfDirectory <$> askOracle (PersistedEnvironmentRequest ())
+    pkgConfDir <- penvPkgConfDirectory <$> apply1 (PersistedEnvironmentRequest ())
 
     case library . localPkgDescr $ lbi of
       Just Library{libBuildInfo = BuildInfo{buildable = True}} ->
@@ -317,10 +326,9 @@ ghcPkgRegister = do
 -- |
 -- Generate a lookup dictionary used to map a PackageName to its location in the build tree
 generatePackageMap
-  :: BuildDictionary
-  -> Action (Map PackageName FilePath)
-generatePackageMap _ = do
-  rootDir <- penvRootDirectory <$> askOracle (PersistedEnvironmentRequest ())
+  :: Rules ()
+generatePackageMap = rule $ \ (BuildDictionary _) -> Just $ do
+  rootDir <- penvRootDirectory <$> apply1 (PersistedEnvironmentRequest ())
   whatever <- apply1 (BuildChildren rootDir)
   let packages = [(source, buildFile) | BuildNode{buildFile, buildSources} <- universe whatever, source <- buildSources]
   pkgList <- forM packages $ \ (cabalFile, buildFile) -> do
@@ -329,7 +337,12 @@ generatePackageMap _ = do
     let packageName = pkgName . package . packageDescription $ gdesc
     return (packageName, cabalFile')
 
-  return $ Map.fromList pkgList
+  let fp = "/tmp/dict.bin"
+      pm = Map.fromList pkgList
+
+  liftIO $ Binary.encodeFile fp pm
+
+  return pm
 
 getPackageRegistrationFiles
   :: FilePath
@@ -350,7 +363,7 @@ buildTree
   -> Maybe (Action BuildNode)
 buildTree _ BuildRecursiveWildcard{} (BuildChildren dir) = Just action where
   action = do
-    ourEnv <- askOracle (PersistedEnvironmentRequest ())
+    ourEnv <- apply1 (PersistedEnvironmentRequest ())
     let rootDir = penvRootDirectory ourEnv
         buildDir = penvBuildDirectory ourEnv
 
@@ -394,7 +407,7 @@ buildTree _ BuildRecursiveWildcard{} (BuildChildren dir) = Just action where
 
 buildTree _ BuildWithExplicitPaths{..} bc@(BuildChildren dir) = Just action where
   action = do
-    ourEnv <- askOracle (PersistedEnvironmentRequest ())
+    ourEnv <- apply1 (PersistedEnvironmentRequest ())
     let rootDir = penvRootDirectory ourEnv
         buildDir = penvBuildDirectory ourEnv
     currentDir <- liftIO getCurrentDirectory
@@ -415,30 +428,36 @@ buildTree _ BuildWithExplicitPaths{..} bc@(BuildChildren dir) = Just action wher
 
 
 -- | Walk the tree evaluating Shakefile.hs to discover .cabal files to build
-buildTree hintResource BuildViaShakefile{} (BuildChildren dir) = Just action where
-  action = do
-    ourEnv <- askOracle (PersistedEnvironmentRequest ())
-    let rootDir = penvRootDirectory ourEnv
-        buildDir = penvBuildDirectory ourEnv
-        shakefile = rootDir </> dir </> "Shakefile.hs"
+buildTree hintResource BuildViaShakefile{} (BuildChildren dir) = Just $ do
+  ourEnv <- apply1 (PersistedEnvironmentRequest ())
+  let rootDir = penvRootDirectory ourEnv
+      buildDir = penvBuildDirectory ourEnv
+      shakefile = rootDir </> dir </> "Shakefile.hs"
 
-    need [shakefile]
+  need [shakefile]
 
-    res <- withResource hintResource 1 $ liftIO . Hint.runInterpreter $ do
-      Hint.reset
-      Hint.loadModules [shakefile]
-      Hint.setImports ["Prelude", "Main"]
-      Hint.interpret "(Main.children, Main.sources)" (undefined :: ([String], [String]))
+  res <- withResource hintResource 1 $ liftIO . Hint.runInterpreter $ do
+    Hint.reset
+    Hint.loadModules [shakefile]
+    Hint.setImports ["Prelude", "Main"]
+    Hint.interpret "(Main.children, Main.sources)" (undefined :: ([String], [String]))
 
-    case res of
-      Left err -> fail $ "Error while interpreting " ++ shakefile ++ ": " ++ show err
-      Right (children, sources) -> do
-        children' <- apply $ fmap (\ x -> BuildChildren $ dir </> x) children
-        registrationFiles <- getPackageRegistrationFiles buildDir dir sources
+  case res of
+    Left err -> fail $ "Error while interpreting " ++ shakefile ++ ": " ++ show err
+    Right (children, sources) -> do
+      children' <- apply $ fmap (\ x -> BuildChildren $ dir </> x) children
+      registrationFiles <- getPackageRegistrationFiles buildDir dir sources
 
-        return BuildNode
-          { buildFile     = rootDir </> dir
-          , buildChildren = children'
-          , buildSources  = sources
-          , buildRegister = registrationFiles
-          }
+      let bn = BuildNode
+            { buildFile     = rootDir </> dir
+            , buildChildren = children'
+            , buildSources  = sources
+            , buildRegister = registrationFiles
+            }
+
+      withResource hintResource 1 $ liftIO $ do
+        exists <- Dir.doesFileExist "/tmp/tree.bin"
+        oldTree <- if exists then Binary.decodeFile "/tmp/tree.bin" else return Map.empty
+        rnf oldTree `seq` Binary.encodeFile "/tmp/tree.bin" (Map.insert dir bn oldTree)
+
+      return bn

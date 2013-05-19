@@ -27,7 +27,7 @@ applyBuildActions ShakeClean{} _ =
   return ()
 
 applyBuildActions ShakeConfigure{} _ = do
-  x <- askOracle (PersistedEnvironmentRequest ())
+  x <- apply1 (PersistedEnvironmentRequest ())
   let _ = x :: PersistedEnvironment
   return ()
 
@@ -89,10 +89,10 @@ main = do
       style = classifyBuildStyle sm
 
   shake options $ do
-    _ <- addOracle (configureTheEnvironment dirs sm)
+    configureTheEnvironment dirs sm
     hintResource <- newResource "hint interpreter" 1
     rule (buildTree hintResource style)
-    _ <- addOracle generatePackageMap
+    generatePackageMap
     initializePackageConf
     initializeProgramDb
     cabalConfigure
@@ -103,7 +103,7 @@ main = do
 
     action $ do
       -- make sure this is not needed directly by any packages
-      pkgConfDir <- penvPkgConfDirectory <$> askOracle (PersistedEnvironmentRequest ())
+      pkgConfDir <- penvPkgConfDirectory <$> apply1 (PersistedEnvironmentRequest ())
       need [pkgConfDir </> "package.cache", pkgConfDir </> "program.db"]
 
       case sm of

@@ -11,11 +11,14 @@ module Development.Shake.Install.BuildTree
   , BuildNode(..)
   ) where
 
+import Control.Applicative
 import Control.DeepSeq
 import Data.Binary
 import Data.Data
 import Data.Hashable
+import qualified Data.Map as Map
 import Development.Shake as Shake
+import qualified System.Directory as Dir
 
 data BuildTree
   = BuildChildren String
@@ -68,4 +71,9 @@ instance Binary BuildNode where
            return (BuildNode x1 x2 x3 x4) }
 
 instance Rule BuildTree BuildNode where
-  storedValue _ = return Nothing
+  storedValue (BuildChildren t) = do
+    let fp = "/tmp/tree.bin"
+    exists <- Dir.doesFileExist fp
+    if exists
+      then Map.lookup t <$> decodeFile fp
+      else return Nothing

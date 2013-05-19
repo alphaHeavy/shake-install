@@ -6,7 +6,7 @@ module Development.Shake.Install.Utils where
 import Control.Applicative
 import Control.Lens
 import Control.Monad (when)
-import Development.Shake as Shake (Action, askOracle, traced)
+import Development.Shake as Shake (Action, apply1, traced)
 import Development.Shake.Install.PersistedEnvironment as Shake
 import qualified Development.Shake.Install.PackageDescription as Shake
 import Distribution.PackageDescription
@@ -21,7 +21,7 @@ systemWithDirectory
   -> [String]
   -> Shake.Action ()
 systemWithDirectory command cwd args = do
-  env <- penvEnvironment <$> askOracle (PersistedEnvironmentRequest ())
+  env <- penvEnvironment <$> apply1 (PersistedEnvironmentRequest ())
 
   traced command $ do
     let cp = (proc command args){cwd = Just cwd, env = Just env}

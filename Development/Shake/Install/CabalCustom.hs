@@ -17,8 +17,8 @@ data CabalCustom = CabalCustom
 
 instance Cabal CabalCustom where
   configAction _ filePath _ = do
-    prefixDir  <- penvPrefixDirectory <$> askOracle (PersistedEnvironmentRequest ())
-    pkgConfDir <- penvPkgConfDirectory <$> askOracle (PersistedEnvironmentRequest ())
+    prefixDir  <- penvPrefixDirectory <$> apply1 (PersistedEnvironmentRequest ())
+    pkgConfDir <- penvPkgConfDirectory <$> apply1 (PersistedEnvironmentRequest ())
 
     sourceDir <- findSourceDirectory filePath
     let args = ["configure", "-v0", "--prefix="++prefixDir, "--global", "--disable-shared", "--disable-library-profiling", "--disable-executable-profiling", "--user", "--package-db="++pkgConfDir, "--builddir="++takeDirectory filePath]

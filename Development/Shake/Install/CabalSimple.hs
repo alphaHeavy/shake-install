@@ -32,7 +32,7 @@ data CabalSimple = CabalSimple
 instance Cabal CabalSimple where
   -- | run the configuration action and write the resolved config out as 'setup-config'
   configAction _ filePath gdesc = do
-    ourEnv <- askOracle (PersistedEnvironmentRequest ())
+    ourEnv <- apply1 (PersistedEnvironmentRequest ())
     let prefixTemplate = toPathTemplate $ penvPrefixDirectory ourEnv
         pkgConfDir     = penvPkgConfDirectory ourEnv
         packageName = display . pkgName . package . packageDescription $ gdesc
@@ -80,7 +80,7 @@ instance Cabal CabalSimple where
     system' "touch" [filePath]
 
   registerAction _ filePath lbi = do
-    pkgConfDir <- penvPkgConfDirectory <$> askOracle (PersistedEnvironmentRequest ())
+    pkgConfDir <- penvPkgConfDirectory <$> apply1 (PersistedEnvironmentRequest ())
 
     traced "cabal register" $ do
       let flags = defaultRegisterFlags{regPackageDB = Setup.Flag (SpecificPackageDB pkgConfDir), regGenPkgConf = Setup.Flag (Just filePath)}

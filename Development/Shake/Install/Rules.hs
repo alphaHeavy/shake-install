@@ -88,7 +88,7 @@ initializePackageConf = "//package.conf.d/package.cache" *> action where
       if hasPkgCache
         then return False
         else do
-          corruptPackageConf <- doesDirectoryExist pkgConfDirectory
+          corruptPackageConf <- Dir.doesDirectoryExist pkgConfDirectory
           when corruptPackageConf $
             removeDirectoryRecursive pkgConfDirectory
 
@@ -364,7 +364,7 @@ buildTree _ BuildRecursiveWildcard{} (BuildChildren dir) = Just action where
           if null entry
             then return buildNode
             else do
-              isDir <- liftIO $ doesDirectoryExist entry
+              isDir <- liftIO $ Dir.doesDirectoryExist entry
               buildNode' <- if isDir && entry /= "." && entry /= ".."
                 then do
                   child <- apply1 $ BuildChildren (dir </> entry)
@@ -409,7 +409,6 @@ buildTree _ BuildWithExplicitPaths{..} bc@(BuildChildren dir) = Just action wher
       , buildRegister = registrationFiles
       }
 
-
 -- | Walk the tree evaluating Shakefile.hs to discover .cabal files to build
 buildTree hintResource BuildViaShakefile{} (BuildChildren dir) = Just action where
   action = do
@@ -432,9 +431,13 @@ buildTree hintResource BuildViaShakefile{} (BuildChildren dir) = Just action whe
         children' <- apply $ fmap (\ x -> BuildChildren $ dir </> x) children
         registrationFiles <- getPackageRegistrationFiles buildDir dir sources
 
-        return $! BuildNode
-          { buildFile     = rootDir </> dir
-          , buildChildren = children'
-          , buildSources  = sources
-          , buildRegister = registrationFiles
-          }
+        let buildNode = BuildNode
+              { buildFile     = rootDir </> dir
+              , buildChildren = children'
+              , buildSources  = sources
+              , buildRegister = registrationFiles
+              }
+
+        writeFile' (dir </> ".shake.children") (show buildNode)
+
+        return buildNode

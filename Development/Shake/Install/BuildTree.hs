@@ -11,11 +11,15 @@ module Development.Shake.Install.BuildTree
   , BuildNode(..)
   ) where
 
+import Control.Applicative
 import Control.DeepSeq
+import Control.Exception (SomeException, try)
 import Data.Binary
 import Data.Data
 import Data.Hashable
 import Development.Shake as Shake
+import System.FilePath
+import System.IO
 
 data BuildTree
   = BuildChildren String
@@ -68,5 +72,9 @@ instance Binary BuildNode where
            return (BuildNode x1 x2 x3 x4) }
 
 instance Rule BuildTree BuildNode where
-  validStored _ _ = return True
+  storedValue (BuildChildren path) = do
+    mval <- try $ withFile (path </> ".shake.children") ReadMode $ \ h -> do
+      children <- read <$> hGetContents h
+      return $!! children
 
+    return $ either (const Nothing) Just (mval :: Either SomeException BuildNode)

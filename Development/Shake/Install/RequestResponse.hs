@@ -2,12 +2,14 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
 module Development.Shake.Install.RequestResponse where
 
 import Development.Shake as Shake
 
+import Control.Applicative
 import Data.Data
 import Data.Binary
 import Control.DeepSeq
@@ -57,12 +59,11 @@ instance NFData a => NFData (Response a) where
 
 instance (Show a, Binary a, NFData a, Typeable a, Hashable a, Eq a)
   => Rule (Request a) (Response a) where
-  validStored _ _ = return True
+  storedValue _ = return Nothing
 
 requestOf
   :: forall a b . Rule (Request a) (Response a)
   => (a -> b) -- ^ record field selector
   -> Action b
 requestOf fun =
-  fmap (fun . unResponse) $ apply1 (Request :: Request a)
-
+  fun . unResponse <$> apply1 (Request :: Request a)

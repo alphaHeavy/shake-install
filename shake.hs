@@ -23,18 +23,19 @@ import System.Process (rawSystem)
 -- |
 -- Each build type has a set of targets they want built
 applyBuildActions :: ShakeMode -> (FilePath, FilePath) -> Action ()
-applyBuildActions ShakeClean{} _ = do
+applyBuildActions ShakeClean{} _ =
   return ()
 
 applyBuildActions ShakeConfigure{} _ = do
-  _ <- apply1 (Request :: Request PersistedEnvironment)
+  x <- apply1 (Request :: Request PersistedEnvironment)
+  let _ = (x :: Response PersistedEnvironment)
   return ()
 
 applyBuildActions ShakeBuild{} (_, currentDir) = do
   childNodes <- apply1 (BuildChildren currentDir)
   need [register | BuildNode{buildRegister} <- universe childNodes, register <- buildRegister]
 
-applyBuildActions ShakeInstall{} _ = do
+applyBuildActions ShakeInstall{} _ =
   return ()
 
 classifyBuildStyle
@@ -74,8 +75,8 @@ main = do
   dirs@(rootDir, _) <- findDirectoryBounds
 
   numProcs <- getNumProcessors
-  ghcPkgResource <- newResource "ghc-pkg register" 1
-  hintResource <- newResource "hint interpreter" 1
+  ghcPkgResource <- newResourceIO "ghc-pkg register" 1
+  hintResource <- newResourceIO "hint interpreter" 1
 
   let threads = case sm of
         ShakeBuild{desiredThreads = Just t} -> t

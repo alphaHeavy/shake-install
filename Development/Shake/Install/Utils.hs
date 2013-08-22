@@ -21,10 +21,8 @@ systemWithDirectory
   -> [String]
   -> Shake.Action ()
 systemWithDirectory command cwd args = do
-  env <- requestOf penvEnvironment
-
   traced command $ do
-    let cp = (proc command args){cwd = Just cwd, env = Just env}
+    let cp = (proc command args){cwd = Just cwd}
 
     putStrLn $ unwords (cwd:command:args)
     (_, _, _, h) <- createProcess cp

@@ -4,14 +4,13 @@
 module Development.Shake.Install.PersistedEnvironment where
 
 import Control.DeepSeq
-import Control.Monad (liftM5)
+import Control.Monad (liftM4)
 import Data.Binary
 import Data.Hashable
 import Data.Typeable
 
 data PersistedEnvironment = PersistedEnvironment
-  { penvEnvironment      :: [(String, String)]
-  , penvRootDirectory    :: FilePath
+  { penvRootDirectory    :: FilePath
   , penvBuildDirectory   :: FilePath
   , penvPrefixDirectory  :: FilePath
   , penvPkgConfDirectory :: FilePath
@@ -19,16 +18,14 @@ data PersistedEnvironment = PersistedEnvironment
 
 instance Binary PersistedEnvironment where
   put PersistedEnvironment{..} = do
-    put penvEnvironment
     put penvRootDirectory
     put penvBuildDirectory
     put penvPrefixDirectory
     put penvPkgConfDirectory
 
   get =
-    liftM5
+    liftM4
       PersistedEnvironment
-        get
         get
         get
         get
@@ -36,18 +33,15 @@ instance Binary PersistedEnvironment where
 
 instance Hashable PersistedEnvironment where
   hashWithSalt s PersistedEnvironment{..} = hashWithSalt s
-    ( penvEnvironment
-    , penvRootDirectory
+    ( penvRootDirectory
     , penvBuildDirectory
     , penvPrefixDirectory
     , penvPkgConfDirectory)
 
 instance NFData PersistedEnvironment where
   rnf PersistedEnvironment{..} =
-    rnf penvEnvironment `seq`
     rnf penvRootDirectory `seq`
     rnf penvBuildDirectory `seq`
     rnf penvPrefixDirectory `seq`
     rnf penvPkgConfDirectory `seq`
     ()
-

@@ -44,18 +44,18 @@ shakeMode
   :: ShakeMode
 shakeMode = modes
   [ ShakeClean
-     { desiredVerbosity = Shake.Normal &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
+     { desiredVerbosity = Shake.Quiet &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
      , desiredThreads   = Nothing &= name "j" &= name "jobs" &= explicit &= help "Number of parallel jobs"
      , desiredStaunch   = False &= name "k" &= name "keep-going" &= explicit &= help "Continue as much as possible after an error"
      } &= name "clean"
   , ShakeConfigure
-     { desiredVerbosity = Shake.Normal &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
+     { desiredVerbosity = Shake.Quiet &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
      , desiredPrefix    = "dist" </> "build" &= name "prefix" &= explicit &= help "Installation prefix"
      , desiredThreads   = Nothing &= name "j" &= name "jobs" &= explicit &= help "Number of parallel jobs"
      , desiredStaunch   = False &= name "k" &= name "keep-going" &= explicit &= help "Continue as much as possible after an error"
      } &= name "configure"
   , ShakeBuild
-     { desiredVerbosity = Shake.Normal &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
+     { desiredVerbosity = Shake.Quiet &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
      , desiredThreads   = Nothing &= name "j" &= name "jobs" &= explicit &= help "Number of parallel jobs"
      , desiredStaunch   = False &= name "k" &= name "keep-going" &= explicit &= help "Continue as much as possible after an error"
      , desiredRecurse   = False &= name "r" &= name "recursive" &= explicit &= help "Recurse into directories looking for *.cabal files"
@@ -63,12 +63,12 @@ shakeMode = modes
      , desiredPackages  = [] &= args &= typFile
      } &= name "build" &= auto
   , ShakeInstall
-     { desiredVerbosity = Shake.Normal &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
+     { desiredVerbosity = Shake.Quiet &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
      , desiredThreads   = Nothing &= name "j" &= name "jobs" &= explicit &= help "Number of parallel jobs"
      , desiredStaunch   = False &= name "k" &= name "keep-going" &= explicit &= help "Continue as much as possible after an error"
      } &= name "install"
   , ShakeGhci
-     { desiredVerbosity = Shake.Normal &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
+     { desiredVerbosity = Shake.Quiet &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
      , desiredThreads   = Nothing &= name "j" &= name "jobs" &= explicit &= help "Number of parallel jobs"
      , desiredStaunch   = False &= name "k" &= name "keep-going" &= explicit &= help "Continue as much as possible after an error"
      , desiredArgs      = [] &= args

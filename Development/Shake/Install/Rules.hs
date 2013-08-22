@@ -60,10 +60,8 @@ configureTheEnvironment
   -> Maybe (Action (Response PersistedEnvironment))
 configureTheEnvironment (rootDir, _) sm _ = Just action where
   action = do
-    env <- liftIO getEnvironment
     let penv = PersistedEnvironment
-          { penvEnvironment      = env
-          , penvRootDirectory    = rootDir
+          { penvRootDirectory    = rootDir
           , penvBuildDirectory   = rootDir </> "build"
           , penvPrefixDirectory  = pfx
           , penvPkgConfDirectory = rootDir </> "build" </> "package.conf.d"

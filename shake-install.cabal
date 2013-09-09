@@ -20,7 +20,7 @@ Executable shake
 
   Build-depends:     base         >= 4.4 && < 5,
                      binary       ,
-                     Cabal        ,
+                     Cabal        >= 0.16,
                      cmdargs      ,
                      containers   ,
                      deepseq      ,

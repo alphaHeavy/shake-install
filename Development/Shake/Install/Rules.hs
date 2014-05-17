@@ -65,6 +65,7 @@ configureTheEnvironment (rootDir, _) sm _ = Just action where
           , penvBuildDirectory   = rootDir </> "build"
           , penvPrefixDirectory  = pfx
           , penvPkgConfDirectory = rootDir </> "build" </> "package.conf.d"
+          , penvAdditionalPkgConfDirectories = desiredPackageDbs sm
           }
 
         pfx | ShakeConfigure{desiredPrefix = prefix} <- sm = rootDir </> prefix

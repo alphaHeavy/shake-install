@@ -35,25 +35,29 @@ instance Cabal CabalSimple where
   configAction _ filePath gdesc = do
     prefixTemplate <- fmap toPathTemplate $ requestOf penvPrefixDirectory
     pkgConfDir <- requestOf penvPkgConfDirectory
+    additionalPkgConfDirectories <- requestOf penvAdditionalPkgConfDirectories
 
     let packageName = display . pkgName . package . packageDescription $ gdesc
     buildDirectory <- requestOf penvBuildDirectory
     sourceDir <- findSourceDirectory filePath
     let programDbPath = pkgConfDir </> "program.db"
+        additionalProgramDbPaths = fmap (</> "program.db") additionalPkgConfDirectories
     need [programDbPath]
+    need additionalProgramDbPaths
     config <- restoreProgramDb builtinPrograms . read <$> readFile' programDbPath
 
     traced "configure" $ do
       let config' =
             (defaultConfigFlags config)
                { configInstallDirs = mempty{prefix = Setup.Flag prefixTemplate, libsubdir = Setup.Flag (toPathTemplate "$pkgid")}
-               , configPackageDBs = [Just buildDatabase]
+               , configPackageDBs = [Just buildDatabase] ++ additionalDatabases
                , configUserInstall = Setup.Flag True
                , configTests = Setup.Flag True}
 --               , configProfLib = Setup.Flag True
 --               , configProfExe = Setup.Flag True}
 
           buildDatabase = SpecificPackageDB pkgConfDir
+          additionalDatabases = fmap (Just . SpecificPackageDB) additionalPkgConfDirectories
 
       let gdesc' = fixupHsSourceDirs sourceDir gdesc
       lbi <- configure (gdesc', (Nothing, [])) config'

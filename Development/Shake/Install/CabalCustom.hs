@@ -19,9 +19,10 @@ instance Cabal CabalCustom where
   configAction _ filePath _ = do
     prefixDir  <- requestOf penvPrefixDirectory
     pkgConfDir <- requestOf penvPkgConfDirectory
+    additionalPkgConfDirectories <- requestOf penvAdditionalPkgConfDirectories
 
     sourceDir <- findSourceDirectory filePath
-    let args = ["configure", "-v0", "--prefix="++prefixDir, "--global", "--disable-shared", "--disable-library-profiling", "--disable-executable-profiling", "--user", "--package-db="++pkgConfDir, "--builddir="++takeDirectory filePath]
+    let args = ["configure", "-v0", "--prefix="++prefixDir, "--global", "--disable-shared", "--disable-library-profiling", "--disable-executable-profiling", "--user",  "--builddir="++takeDirectory filePath, "--package-db="++ pkgConfDir] ++ fmap ("--package-db="++) additionalPkgConfDirectories
     systemWithDirectory "cabal" sourceDir args
 
   buildAction _ filePath _ = do

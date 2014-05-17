@@ -109,7 +109,7 @@ main = do
 
       case sm of
         ShakeGhci{desiredArgs} -> liftIO $ do
-          let desiredArgs' = "-package-conf=/Source/alphaHeavy.2/build/package.conf.d" : desiredArgs
+          let desiredArgs' = "-package-conf=/Users/steve/source/eng/build/package.conf.d" : desiredArgs
           ec <- rawSystem "ghci" desiredArgs'
           exitWith ec
 

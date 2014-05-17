@@ -17,6 +17,7 @@ data ShakeMode
       , desiredPrefix    :: FilePath
       , desiredThreads   :: Maybe Int
       , desiredStaunch   :: Bool
+      , desiredPackageDbs :: [String]
       }
   | ShakeBuild
       { desiredVerbosity :: Shake.Verbosity
@@ -53,6 +54,7 @@ shakeMode = modes
      , desiredPrefix    = "dist" </> "build" &= name "prefix" &= explicit &= help "Installation prefix"
      , desiredThreads   = Nothing &= name "j" &= name "jobs" &= explicit &= help "Number of parallel jobs"
      , desiredStaunch   = False &= name "k" &= name "keep-going" &= explicit &= help "Continue as much as possible after an error"
+     , desiredPackageDbs= [] &= name "pacakge-db" &= help "Additional Package DBs for finding dependencies."
      } &= name "configure"
   , ShakeBuild
      { desiredVerbosity = Shake.Quiet &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"

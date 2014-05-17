@@ -26,6 +26,7 @@ data ShakeMode
       , desiredRecurse   :: Bool
       , desiredRoots     :: [String]
       , desiredPackages  :: [String]
+      , desiredPackageDbs :: [String]
       }
   | ShakeInstall
       { desiredVerbosity :: Shake.Verbosity
@@ -63,6 +64,7 @@ shakeMode = modes
      , desiredRecurse   = False &= name "r" &= name "recursive" &= explicit &= help "Recurse into directories looking for *.cabal files"
      , desiredRoots     = [] &= name "root" &= typDir &= explicit &= help "Additional dependency roots"
      , desiredPackages  = [] &= args &= typFile
+     , desiredPackageDbs= [] &= name "pacakge-db" &= help "Additional Package DBs for finding dependencies."
      } &= name "build" &= auto
   , ShakeInstall
      { desiredVerbosity = Shake.Quiet &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"

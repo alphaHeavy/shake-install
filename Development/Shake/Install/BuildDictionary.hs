@@ -22,13 +22,6 @@ import System.FilePath
 import Development.Shake (Action)
 import Development.Shake.Install.RequestResponse (requestOf)
 
-instance NFData PackageIdentifier where
-  rnf (PackageIdentifier x1 x2)
-    = rnf x1 `seq` rnf x2 `seq` ()
-
-instance NFData PackageName where
-  rnf (PackageName x1) = rnf x1 `seq` ()
-
 instance Hashable (Map PackageName FilePath) where
   hashWithSalt s = hashWithSalt s . toList
 
@@ -41,8 +34,6 @@ instance Binary PackageName where
 
 newtype BuildDictionary = BuildDictionary{unBuildDict :: Map PackageName FilePath}
   deriving (Read, Show, Eq, Typeable, NFData, Binary, Hashable)
-
-deriving instance Typeable PackageName
 
 findCabalFile
   :: FilePath

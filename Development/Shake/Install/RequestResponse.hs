@@ -19,11 +19,7 @@ import Data.Hashable
 data Request a = Request
   deriving (Show)
 
-instance Typeable1 Request where
-  typeOf1 _ = mkTyConApp (mkTyCon3 "shake" "Main" "Request") []
-
-instance Typeable a => Typeable (Request a) where
-  typeOf = typeOfDefault
+deriving instance Typeable Request
 
 instance NFData (Request a) where
   rnf _ = ()

@@ -1,83 +1,97 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module Development.Shake.Install.ShakeMode where
 
-import Development.Shake as Shake
+import qualified Development.Shake as Shake
 import Development.Shake.FilePath
-import System.Console.CmdArgs
+import Options.Applicative
+import Data.Data (Data)
+import Data.Typeable (Typeable)
+
+desiredStaunch :: ShakeMode -> Bool
+desiredStaunch (ShakeClean CleanOpts{cleanStaunch}) = cleanStaunch
+desiredStaunch (ShakeConfigure ConfigureOpts{configureStaunch}) = configureStaunch
+desiredStaunch (ShakeBuild BuildOpts{buildStaunch}) = buildStaunch
+desiredStaunch (ShakeInstall InstallOpts{installStaunch}) = installStaunch
+desiredStaunch (ShakeGhci GhciOpts{ghciStaunch}) = ghciStaunch
+
+desiredPackageDbs :: ShakeMode -> [String]
+desiredPackageDbs (ShakeConfigure ConfigureOpts{configurePackageDbs}) = configurePackageDbs
+desiredPackageDbs (ShakeBuild BuildOpts{buildPackageDbs}) = buildPackageDbs
+desiredPackageDbs _ = []
+
+data CleanOpts = CleanOpts
+  { cleanStaunch   :: Bool
+  } deriving (Show, Data, Typeable)
+data ConfigureOpts = ConfigureOpts
+  { desiredPrefix    :: FilePath
+  , configureStaunch :: Bool
+  , configurePackageDbs :: [String]
+  } deriving (Show, Data, Typeable)
+data BuildOpts = BuildOpts
+  { buildThreads    :: Maybe Int
+  , buildStaunch    :: Bool
+  , desiredRecurse  :: Bool
+  , desiredRoots    :: [String]
+  , desiredPackages :: [String]
+  , buildPackageDbs :: [String]
+  } deriving (Show, Data, Typeable)
+data InstallOpts = InstallOpts
+  { installStaunch :: Bool
+  } deriving (Show, Data, Typeable)
+data GhciOpts = GhciOpts
+  { ghciStaunch :: Bool
+  , desiredArgs    :: [String]
+  } deriving (Show, Data, Typeable)
 
 data ShakeMode
-  = ShakeClean
-      { desiredVerbosity :: Shake.Verbosity
-      , desiredThreads   :: Maybe Int
-      , desiredStaunch   :: Bool
-      }
-  | ShakeConfigure
-      { desiredVerbosity :: Shake.Verbosity
-      , desiredPrefix    :: FilePath
-      , desiredThreads   :: Maybe Int
-      , desiredStaunch   :: Bool
-      , desiredPackageDbs :: [String]
-      }
-  | ShakeBuild
-      { desiredVerbosity :: Shake.Verbosity
-      , desiredThreads   :: Maybe Int
-      , desiredStaunch   :: Bool
-      , desiredRecurse   :: Bool
-      , desiredRoots     :: [String]
-      , desiredPackages  :: [String]
-      , desiredPackageDbs :: [String]
-      }
-  | ShakeInstall
-      { desiredVerbosity :: Shake.Verbosity
-      , desiredThreads   :: Maybe Int
-      , desiredStaunch   :: Bool
-      }
+  = ShakeClean CleanOpts
+  | ShakeConfigure ConfigureOpts
+  | ShakeBuild BuildOpts
+  | ShakeInstall InstallOpts
+  | ShakeGhci GhciOpts
+  deriving (Show, Data, Typeable)
 
-  | ShakeGhci
-      { desiredVerbosity :: Shake.Verbosity
-      , desiredThreads   :: Maybe Int
-      , desiredArgs      :: [String]
-      , desiredStaunch   :: Bool
-      }
-    deriving (Show, Data, Typeable)
+data ShakeInstallOpts = ShakeInstallOpts
+  { desiredVerbosity :: Shake.Verbosity
+  , shakeMode :: ShakeMode
+  }
 
-shakeMode
-  :: ShakeMode
-shakeMode = modes
-  [ ShakeClean
-     { desiredVerbosity = Shake.Quiet &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
-     , desiredThreads   = Nothing &= name "j" &= name "jobs" &= explicit &= help "Number of parallel jobs"
-     , desiredStaunch   = False &= name "k" &= name "keep-going" &= explicit &= help "Continue as much as possible after an error"
-     } &= name "clean"
-  , ShakeConfigure
-     { desiredVerbosity = Shake.Quiet &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
-     , desiredPrefix    = "dist" </> "build" &= name "prefix" &= explicit &= help "Installation prefix"
-     , desiredThreads   = Nothing &= name "j" &= name "jobs" &= explicit &= help "Number of parallel jobs"
-     , desiredStaunch   = False &= name "k" &= name "keep-going" &= explicit &= help "Continue as much as possible after an error"
-     , desiredPackageDbs= [] &= name "package-db" &= help "Additional Package DBs for finding dependencies."
-     } &= name "configure"
-  , ShakeBuild
-     { desiredVerbosity = Shake.Quiet &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
-     , desiredThreads   = Nothing &= name "j" &= name "jobs" &= explicit &= help "Number of parallel jobs"
-     , desiredStaunch   = False &= name "k" &= name "keep-going" &= explicit &= help "Continue as much as possible after an error"
-     , desiredRecurse   = False &= name "r" &= name "recursive" &= explicit &= help "Recurse into directories looking for *.cabal files"
-     , desiredRoots     = [] &= name "root" &= typDir &= explicit &= help "Additional dependency roots"
-     , desiredPackages  = [] &= args &= typFile
-     , desiredPackageDbs= [] &= name "package-db" &= help "Additional Package DBs for finding dependencies."
-     } &= name "build" &= auto
-  , ShakeInstall
-     { desiredVerbosity = Shake.Quiet &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
-     , desiredThreads   = Nothing &= name "j" &= name "jobs" &= explicit &= help "Number of parallel jobs"
-     , desiredStaunch   = False &= name "k" &= name "keep-going" &= explicit &= help "Continue as much as possible after an error"
-     } &= name "install"
-  , ShakeGhci
-     { desiredVerbosity = Shake.Quiet &= name "v" &= name "verbose" &= explicit &= help "Desired verbosity level"
-     , desiredThreads   = Nothing &= name "j" &= name "jobs" &= explicit &= help "Number of parallel jobs"
-     , desiredStaunch   = False &= name "k" &= name "keep-going" &= explicit &= help "Continue as much as possible after an error"
-     , desiredArgs      = [] &= args
-     } &= name "ghci"
-  ] &= program "shake"
+verbosityParser :: Parser Shake.Verbosity
+verbosityParser = option auto ( short 'v' <> long "verbose" <> value Shake.Quiet <> help "Desired verbosity level")
+jobsParser :: Parser (Maybe Int)
+jobsParser = optional $ option auto (short 'j' <> long "jobs" <> help "Number of parallel jobs")
+staunchParser :: Parser Bool
+staunchParser = switch (short 'k' <> long "keep-going" <> help "Continue as much as possible after an error")
+
+programParser :: ParserInfo ShakeInstallOpts
+programParser = info ((ShakeInstallOpts <$> verbosityParser <*> shakeModeParser) <**> helper)
+                     (progDesc "The shake program" <> fullDesc)
+
+shakeModeParser :: Parser ShakeMode
+shakeModeParser = hsubparser $
+    command "clean" (info (ShakeClean <$> (CleanOpts <$> staunchParser)) $ progDesc "clean")
+ <> command "configure" (info (ShakeConfigure <$> (ConfigureOpts
+   <$> option auto (value ("dist" </> "build") <> long "prefix" <> help "Installation prefix")
+   <*> staunchParser
+   <*> option auto (value [] <> long "package-db" <> help "Additional Package DBs for finding dependencies.")
+     )) $ progDesc "configure")
+ <> command "build" (info (ShakeBuild <$> (BuildOpts
+   <$> jobsParser
+   <*> staunchParser
+   <*> switch (short 'r' <> long "recursive" <> help "Recurse into directories looking for *.cabal files")
+   <*> option auto (value [] <> long "root" <> help "Additional dependency roots")
+   <*> option auto (value [] <> long "packages")
+   <*> option auto (value [] <> long "package-db" <> help "Additional Package DBs for finding dependencies.")
+     )) $ progDesc "build")
+ <> command "install" (info (ShakeInstall <$> (InstallOpts
+   <$> staunchParser
+     )) $ progDesc "install")
+ <> command "ghci" (info (ShakeGhci <$> (GhciOpts
+   <$> staunchParser
+   <*> pure []
+     )) $ progDesc "ghci")
 
 
 data BuildStyle

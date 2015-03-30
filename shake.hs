@@ -15,10 +15,11 @@ import Development.Shake.Install.Rules as Shake
 import Development.Shake.Install.ShakeMode as Shake
 import Development.Shake.Install.Utils as Shake
 import GHC.Conc (getNumProcessors)
-import System.Console.CmdArgs
 import System.Exit (exitWith)
 import System.FilePath
 import System.Process (rawSystem)
+import Options.Applicative (execParser)
+import Control.Exception.Base (throwIO)
 
 -- |
 -- Each build type has a set of targets they want built
@@ -38,16 +39,19 @@ applyBuildActions ShakeBuild{} (_, currentDir) = do
 applyBuildActions ShakeInstall{} _ =
   return ()
 
+applyBuildActions ShakeGhci{} _ =
+  liftIO $ throwIO $ userError "impossible! did not expect ShakeGhci"
+
 classifyBuildStyle
   :: ShakeMode
   -> BuildStyle
 classifyBuildStyle sm = case sm of
-  ShakeBuild{desiredRecurse = True} ->
+  ShakeBuild BuildOpts{desiredRecurse = True} ->
     BuildRecursiveWildcard
       {
       }
 
-  sb@ShakeBuild{desiredPackages, desiredRoots} | explicitPaths sb ->
+  sb@(ShakeBuild BuildOpts{desiredPackages, desiredRoots}) | explicitPaths sb ->
     BuildWithExplicitPaths
       { buildCabalFiles = desiredPackages
       , buildDepends    = desiredRoots
@@ -59,7 +63,7 @@ classifyBuildStyle sm = case sm of
       }
 
  where
-  explicitPaths ShakeBuild{desiredPackages, desiredRoots}
+  explicitPaths (ShakeBuild BuildOpts{desiredPackages, desiredRoots})
     | not . null $ desiredPackages = True
     | not . null $ desiredRoots    = True
   explicitPaths _                  = False
@@ -69,7 +73,7 @@ main = do
   setDefaultUncaughtExceptionHandler
   -- "ghc --print-libdir" </> "package.conf.d" </> "package.cache"
 
-  sm <- cmdArgs shakeMode
+  so <- execParser programParser
 
   -- need to scan directories to locate the .shake.database
   dirs@(rootDir, _) <- findDirectoryBounds
@@ -78,14 +82,15 @@ main = do
   ghcPkgResource <- newResourceIO "ghc-pkg register" 1
   hintResource <- newResourceIO "hint interpreter" 1
 
+  let sm = shakeMode so
   let threads = case sm of
-        ShakeBuild{desiredThreads = Just t} -> t
+        ShakeBuild BuildOpts{buildThreads = Just t} -> t
         _  -> numProcs
 
       options = shakeOptions
        { shakeFiles     = rootDir </> ".shake"
        , shakeThreads   = threads
-       , shakeVerbosity = desiredVerbosity sm
+       , shakeVerbosity = desiredVerbosity so
        , shakeStaunch   = desiredStaunch sm }
 
       style = classifyBuildStyle sm
@@ -108,7 +113,7 @@ main = do
       need [pkgConfDir </> "package.cache", pkgConfDir </> "program.db"]
 
       case sm of
-        ShakeGhci{desiredArgs} -> liftIO $ do
+        ShakeGhci GhciOpts{desiredArgs} -> liftIO $ do
           let desiredArgs' = "-package-conf=/Users/steve/source/eng/build/package.conf.d" : desiredArgs
           ec <- rawSystem "ghci" desiredArgs'
           exitWith ec

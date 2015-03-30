@@ -68,7 +68,7 @@ configureTheEnvironment (rootDir, _) sm _ = Just action where
           , penvAdditionalPkgConfDirectories = desiredPackageDbs sm
           }
 
-        pfx | ShakeConfigure{desiredPrefix = prefix} <- sm = rootDir </> prefix
+        pfx | ShakeConfigure ConfigureOpts{desiredPrefix = prefix} <- sm = rootDir </> prefix
             | otherwise = rootDir </> "build" </> "dist"
 
     return $! Response penv

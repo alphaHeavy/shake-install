@@ -11,7 +11,7 @@ Copyright:           Alpha Heavy Industries
 Category:            Distribution
 Build-type:          Simple
 
-Cabal-version:       >=1.10
+Cabal-version:       >=1.18
 
 Executable shake
   Default-Language:  Haskell2010
@@ -20,8 +20,8 @@ Executable shake
 
   Build-depends:     base         >= 4.4 && < 5,
                      binary       ,
-                     Cabal        >= 0.16,
-                     cmdargs      ,
+                     Cabal        >= 1.18,
+                     optparse-applicative ,
                      containers   ,
                      deepseq      ,
                      directory    ,

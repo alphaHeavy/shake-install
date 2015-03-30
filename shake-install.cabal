@@ -1,7 +1,7 @@
 Name:                shake-install
 Version:             0.1
 Synopsis:            Build a set of cabal packages in the correct order
--- Description:         
+Description:         Build a set of cabal packages in the correct order
 Homepage:            https://github.com/alphaHeavy/shake-install
 License:             BSD3
 License-file:        LICENSE
@@ -48,3 +48,6 @@ Executable shake
                      Development.Shake.Install.ShakeMode
                      Development.Shake.Install.Utils
 
+Source-Repository head
+  Type:              git
+  Location:          https://github.com/alphaHeavy/shake-install.git

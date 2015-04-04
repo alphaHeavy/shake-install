@@ -20,7 +20,7 @@ Executable shake
 
   Build-depends:     base         >= 4.4 && < 5,
                      binary       ,
-                     Cabal        >= 1.18,
+                     Cabal        >= 1.22,
                      optparse-applicative ,
                      containers   ,
                      deepseq      ,
@@ -30,7 +30,7 @@ Executable shake
                      hint         ,
                      lens         ,
                      process      ,
-                     shake        > 0.4 && < 0.11,
+                     shake        > 0.14,
                      uniplate     ,
                      unix
 

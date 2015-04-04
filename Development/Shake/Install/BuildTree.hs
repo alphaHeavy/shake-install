@@ -18,6 +18,7 @@ import Data.Binary
 import Data.Data
 import Data.Hashable
 import Development.Shake as Shake
+import Development.Shake.Rule
 import System.FilePath
 import System.IO
 
@@ -72,7 +73,7 @@ instance Binary BuildNode where
            return (BuildNode x1 x2 x3 x4) }
 
 instance Rule BuildTree BuildNode where
-  storedValue (BuildChildren path) = do
+  storedValue _ (BuildChildren path) = do
     mval <- try $ withFile (path </> ".shake.children") ReadMode $ \ h -> do
       children <- read <$> hGetContents h
       return $!! children

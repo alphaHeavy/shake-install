@@ -7,6 +7,7 @@ module Main (main) where
 
 import Data.Generics.Uniplate.DataOnly
 import Development.Shake as Shake
+import Development.Shake.Rule
 import Development.Shake.Install.BuildTree as Shake
 import Development.Shake.Install.Exceptions as Shake
 import Development.Shake.Install.PersistedEnvironment as Shake

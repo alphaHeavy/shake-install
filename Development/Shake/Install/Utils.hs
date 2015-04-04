@@ -61,7 +61,7 @@ makePackageDescriptionPathsAbsolute sourceDirectory desc@PackageDescription{..} 
   updatedDescription = desc
     { library = fmap updLib library
     , executables = fmap updExe executables
-    , licenseFile = makeAbsolute licenseFile
+    , licenseFiles = makeAbsolute <$> licenseFiles
     , dataDir = makeAbsolute dataDir
     }
   updLib lib@Library{libBuildInfo} = lib{libBuildInfo = fixupDirectoryPaths libBuildInfo}

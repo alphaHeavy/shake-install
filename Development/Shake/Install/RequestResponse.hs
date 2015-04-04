@@ -8,13 +8,13 @@
 module Development.Shake.Install.RequestResponse where
 
 import Development.Shake as Shake
+import Development.Shake.Rule
 
 import Control.Applicative
 import Data.Data
 import Data.Binary
 import Control.DeepSeq
 import Data.Hashable
-
 
 data Request a = Request
   deriving (Show)
@@ -55,7 +55,7 @@ instance NFData a => NFData (Response a) where
 
 instance (Show a, Binary a, NFData a, Typeable a, Hashable a, Eq a)
   => Rule (Request a) (Response a) where
-  storedValue _ = return Nothing
+  storedValue _ _ = return Nothing
 
 requestOf
   :: forall a b . Rule (Request a) (Response a)

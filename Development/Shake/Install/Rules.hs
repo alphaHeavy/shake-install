@@ -22,6 +22,7 @@ module Development.Shake.Install.Rules
 import Control.Monad
 import qualified Data.Map as Map
 import Development.Shake as Shake
+import Development.Shake.Rule
 import Development.Shake.Install.RequestResponse as Shake
 import Development.Shake.Install.BuildDictionary as Shake
 import Development.Shake.Install.BuildTree as Shake
@@ -78,7 +79,7 @@ configureTheEnvironment (rootDir, _) sm _ = Just action where
 -- updated, a dependency causes the whole tree to be rebuilt
 initializePackageConf
   :: Rules ()
-initializePackageConf = "//package.conf.d/package.cache" *> action where
+initializePackageConf = "//package.conf.d/package.cache" %> action where
   action filePath = do
     let pkgConfDirectory = takeDirectory filePath
 
@@ -98,7 +99,7 @@ initializePackageConf = "//package.conf.d/package.cache" *> action where
 
 initializeProgramDb
   :: Rules ()
-initializeProgramDb = "//program.db" *> action where
+initializeProgramDb = "//program.db" %> action where
   action filePath = do
     (_, config) <- liftIO $ configCompiler (Just GHC) Nothing Nothing defaultProgramConfiguration normal
     writeFile' filePath (show config)
@@ -169,7 +170,7 @@ tryNeedExtensions sourceDir modulePath = do
 -- The main build rule, should be equivalent to "cabal configure"
 cabalConfigure
   :: Rules ()
-cabalConfigure = "//setup-config" *> action where
+cabalConfigure = "//setup-config" %> action where
   action filePath = do
     sourceDir <- findSourceDirectory filePath
     buildDir <- requestOf penvBuildDirectory
@@ -220,7 +221,7 @@ cabalConfigure = "//setup-config" *> action where
 -- The main build rule, should be equivalent to "cabal build"
 cabalBuild
   :: Rules ()
-cabalBuild = "//package.conf.inplace" *> action where
+cabalBuild = "//package.conf.inplace" %> action where
   action filePath = do
     lbi <- getLocalBuildInfo filePath
 
@@ -252,7 +253,7 @@ cabalBuild = "//package.conf.inplace" *> action where
 -- calculate the actual files copied
 cabalCopy
   :: Rules ()
-cabalCopy = "//copy" *> action where
+cabalCopy = "//copy" %> action where
   action filePath = do
     need [replaceFileName filePath "package.conf.inplace"]
 
@@ -266,7 +267,7 @@ cabalCopy = "//copy" *> action where
 -- This generates a registration script used by ghc-pkg register
 cabalRegister
   :: Rules ()
-cabalRegister = "//pkg.config" *> action where
+cabalRegister = "//pkg.config" %> action where
   action filePath = do
     need [replaceFileName filePath "copy"]
 
@@ -290,7 +291,7 @@ cabalRegister = "//pkg.config" *> action where
 ghcPkgRegister
   :: Resource -- ^ singleton resource lock, "ghc-pkg register" must be serialized
   -> Rules ()
-ghcPkgRegister res = "//register" *> action where
+ghcPkgRegister res = "//register" %> action where
   action filePath = do
     let pkgConf = replaceFileName filePath "pkg.config"
     need [pkgConf]

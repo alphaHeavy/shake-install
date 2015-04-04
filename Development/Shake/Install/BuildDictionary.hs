@@ -28,10 +28,6 @@ instance Hashable (Map PackageName FilePath) where
 instance Hashable PackageName where
   hashWithSalt s = hashWithSalt s . display
 
-instance Binary PackageName where
-  get = fmap PackageName get
-  put = put . display
-
 newtype BuildDictionary = BuildDictionary{unBuildDict :: Map PackageName FilePath}
   deriving (Read, Show, Eq, Typeable, NFData, Binary, Hashable)
 

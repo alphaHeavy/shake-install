@@ -73,17 +73,17 @@ shakeModeParser :: Parser ShakeMode
 shakeModeParser = hsubparser $
     command "clean" (info (ShakeClean <$> (CleanOpts <$> staunchParser)) $ progDesc "clean")
  <> command "configure" (info (ShakeConfigure <$> (ConfigureOpts
-   <$> option auto (value ("dist" </> "build") <> long "prefix" <> help "Installation prefix")
+   <$> option str (value ("dist" </> "build") <> long "prefix" <> help "Installation prefix")
    <*> staunchParser
-   <*> option auto (value [] <> long "package-db" <> help "Additional Package DBs for finding dependencies.")
+   <*> many (option str (long "package-db" <> help "Additional Package DBs for finding dependencies."))
      )) $ progDesc "configure")
  <> command "build" (info (ShakeBuild <$> (BuildOpts
    <$> jobsParser
    <*> staunchParser
    <*> switch (short 'r' <> long "recursive" <> help "Recurse into directories looking for *.cabal files")
-   <*> option auto (value [] <> long "root" <> help "Additional dependency roots")
-   <*> option auto (value [] <> long "packages")
-   <*> option auto (value [] <> long "package-db" <> help "Additional Package DBs for finding dependencies.")
+   <*> many (option str (long "root" <> help "Additional dependency roots"))
+   <*> many (option str (long "packages"))
+   <*> many (option str (long "package-db" <> help "Additional Package DBs for finding dependencies."))
      )) $ progDesc "build")
  <> command "install" (info (ShakeInstall <$> (InstallOpts
    <$> staunchParser

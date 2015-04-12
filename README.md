@@ -17,6 +17,31 @@ children = []
 sources = ["project.cabal"]
 ```
 
+## installation requirements
+
+The `shake` library in your user db
+
+    cabal install shake
+    
+Use the cabal executable that GHC uses
+
+```
+mkdir old-cabal
+cabal sandbox init
+cabal install cabal-1.18.0.8 # ghc 7.8.3
+export PATH=$PWD/.cabal-sandbox/bin:$PATH
+```
+
+The shake-install executable `shake`
+
+```
+git clone git@github.com:AlphaHeavy/shake-install
+cd shake-install
+cabal sandbox init
+cabal install
+export PATH=$PWD/.cabal-sandbox/bin:$PATH
+```
+
 ## Using sandboxes
 
 You will need the package db

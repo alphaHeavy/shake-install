@@ -1,3 +1,4 @@
+## shake install is no longer being developed. Use stack instead. ##
 shake-install is a tool for building a set of related Haskell packages that are built with shake.
 
 If you are building a system containing multiple cabal files you may find it useful.
